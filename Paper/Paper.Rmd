@@ -48,6 +48,12 @@ Here are two sample references: [@Feynman1963118; @Dirac1953888].
 
 {Introduce the Model}
 
+Some beautiful formula:
+
+$$
+ \mathbf {\beta_t^*} =: argmax  -\alpha ln(\beta_t) + c\beta_t + \beta_t\frac{IS}{N} 
+$$
+
 # Model Analysis
 
 # Discussion

@@ -1,0 +1,63 @@
+---
+title: "The COVID-19 Boundary Value Problem"
+author:
+  - name: Sarah A. Nowak
+    email: snowak@rand.org
+    affiliation: RAND Corporation
+    footnote: 1
+  - name: Raffaelle Vardavas
+    email: rvardava@rand.org
+    affiliation: RAND Corporation
+    footnote: 2
+  - name: Pedro Nascimento de Lima
+    email: plima@rand.org
+    affiliation: RAND Corporation
+    footnote: 2
+address:
+  - code: "RAND Corporation"
+    address: "RAND Corporation, Santa Monica, CA"
+footnote:
+  - code: 1
+    text: "Corresponding Author"
+  - code: 2
+    text: "Equal contribution"
+abstract: |
+  This is the abstract.
+  It consists of two paragraphs.
+journal: "An awesome journal"
+date: "`r Sys.Date()`"
+bibliography: mybibfile.bib
+#linenumbers: true
+#numbersections: true
+csl: elsevier-harvard.csl
+output: rticles::elsevier_article
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Introduction
+
+{Discuss what problem we want to get at}
+
+{Discuss}
+
+Here are two sample references: [@Feynman1963118; @Dirac1953888].
+
+# Model
+
+{Introduce the Model}
+
+# Model Analysis
+
+# Discussion
+
+# Conclusion
+
+# References {#references .unnumbered}
+
+
+
+
+
+

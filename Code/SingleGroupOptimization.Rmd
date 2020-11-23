@@ -1,0 +1,131 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+require(bvpSolve)
+require(deSolve)
+```
+
+
+```{r}
+oneComparmentSIR <- function(x, y, parms) {
+
+    with(as.list(c(y, parms)),{
+        S <- y[1] 
+        I <- y[2] 
+        LambdaS <- y[3]
+        LambdaI <- y[4]
+        
+        beta = a/(c+(I*S)/N*(1-LambdaS-LambdaI))
+        
+        dS <- -beta*S*I/N
+        
+        dI <- beta*S*I/N-gamma*I
+        
+        dLambdaS <- beta*I/N*(1+LambdaS)
+        
+        dLambdaI <- beta*S/N*(1-LambdaS-LambdaI)+gamma*LambdaI
+
+
+     
+
+    return(list(c(dS,dI,dLambdaS,dLambdaI)))
+    })
+}
+```
+
+```{r}
+oneComparmentSIRmyopic <- function(x, y, parms) {
+
+    with(as.list(c(y, parms)),{
+        S <- y[1] 
+        I <- y[2] 
+        
+        beta = a/(c+(I*S)/N)
+        
+        dS <- -beta*S*I/N
+        
+        dI <- beta*S*I/N-gamma*I
+
+    return(list(c(dS,dI)))
+    })
+}
+```
+
+```{r}
+N <- 1000
+R0 <- 2.5
+gamma <- 1/14
+beta0 <- R0*gamma
+c <- 10
+a <- beta0*c
+```
+
+
+
+Functions for solving boundary value problems include bvptwp, bvpcol, and bvpshoot
+
+```{r}
+I0 <- 300
+yini = c(N-I0,I0,NA,NA)
+yend = c(NA,NA,0,0)
+t <- seq(0,1000,2)
+```
+
+```{r}
+if(FALSE){
+sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(a = a,c=c,N=N),func = oneComparmentSIR)
+S <- sol[,2]
+I <- sol[,3]
+LambdaS <- sol[,4]
+LambdaI <- sol[,5]
+
+R0 = a/(c+(I*S)/N*(1-LambdaS-LambdaI))/gamma
+
+Rt = R0*(S/N)
+plot(Rt)
+plot(R0)
+plot(I)
+plot(S)
+plot(LambdaS)
+plot(LambdaI)
+}
+```
+
+```{r}
+sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(a = a,c=c,N=N),func = oneComparmentSIR,
+              xguess = t,yguess = t(sol[,2:5]))
+S <- sol[,2]
+I <- sol[,3]
+LambdaS <- sol[,4]
+LambdaI <- sol[,5]
+
+R0 = a/(c+(I*S)/N*(1-LambdaS-LambdaI))/gamma
+Rt = R0*(S/N)
+plot(Rt)
+plot(R0)
+plot(I)
+plot(S)
+plot(LambdaS)
+plot(LambdaI)
+```
+```{r}
+out <- ode(y = yini[1:2], times = t, func = oneComparmentSIRmyopic , parms = list(a = a,c=c,N=N))
+
+Sm <- out[,2]
+Im <- out[,3]
+R0m = a/(c+(I*S)/N)/gamma
+
+plot(Sm)
+plot(Im)
+plot(R0m)
+Rtm = R0m*(Sm/N)
+plot(Rtm)
+```
+```{r}
+plot(R0m-R0)
+```
+
+

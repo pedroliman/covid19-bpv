@@ -71,6 +71,7 @@ Euler-Lagrange Equation:
  which becomes:
 \begin{equation}
 \frac{d}{dt} \frac{\partial \cal{L}}{\partial {\dot{x_i}}}=\frac{\partial \cal{L}}{\partial x_i}
+\label{eq:EL}
 \end{equation}
 
 
@@ -92,12 +93,14 @@ Euler-Lagrange Equation:
 Cost function:
 \begin{equation}
 -a\rm{ln}({\beta})+c\beta+\frac{\beta IS}{N}
+\label{eq:cost}
 \end{equation}
 
+The full Lagrangian, including constraints for the equations of motion is:
 \begin{equation}
 \begin{split}
 \mathcal{L} = -a \rm {ln}({\beta})+c\beta+\frac{\beta IS}{N} +\\
-\lambda_S(\dot{S} +\frac{\beta IS}{N}-b)+\\
+\lambda_S(\dot{S} +\frac{\beta IS}{N})+\\
 \lambda_I(\dot{I}-\frac{\beta IS}{N}+\gamma I)
 \end{split}
 \end{equation}
@@ -106,29 +109,29 @@ We leave out the constraint for $R$ because it doesn't factor into the cost equa
 Apply equation 1 $x_i = S$
 
 \begin{equation}
-\frac{d}{dt}\left(\lambda_s \right)-\left(\frac{\beta I}{N}+\lambda_S \frac{\beta I}{N}\right)
+\frac{d}{dt}\left(\lambda_s \right)=\left(\frac{\beta I}{N}+\lambda_S \frac{\beta I}{N} - \lambda_I \frac{\beta I}{N}\right)
 \end{equation}
 
 \begin{equation}
-\dot{\lambda}_S = \frac{\beta I}{N}(1 + \lambda_S-b)
+\dot{\lambda}_S = \frac{\beta I}{N}(1 + \lambda_S-\lambda_I)
 \end{equation}
 
 Apply equation 1 $x_i = I$:
 \begin{equation}
-\dot{\lambda}_I = \frac{\beta S}{N}(1-\lambda_S-\lambda_I)+\gamma \lambda_I
+\dot{\lambda}_I = \frac{\beta S}{N}(1+\lambda_S-\lambda_I)+\gamma \lambda_I
 \end{equation}
 
 Apply equation 1 $x_i = \beta$:
 \begin{equation}
--\frac{a}{\beta}+c+\frac{IS}{N}-\lambda_S \frac{IS}{N}-\lambda_I \frac{IS}{N}
+-\frac{a}{\beta}+c+\frac{IS}{N}+\lambda_S \frac{IS}{N}-\lambda_I \frac{IS}{N}
 \end{equation}
 which becomes
 \begin{equation}
-\frac{a}{\beta} = c + \frac{IS}{N}(1-\lambda_S-\lambda_I)
+\frac{a}{\beta} = c + \frac{IS}{N}(1+\lambda_S-\lambda_I)
 \end{equation}
 
 \begin{equation}
-\beta = \frac{a}{c+\frac{IS}{N}(1-\lambda_S-\lambda_I)}
+\beta = \frac{a}{c+\frac{IS}{N}(1+\lambda_S-\lambda_I)}
 \end{equation}
 
 
@@ -155,14 +158,53 @@ which becomes
 \beta = \frac{a}{c+\frac{IS}{N}}
 \end{equation}
 
-\section{Exponential time weighting}
-Cost function:
+
+\section{Model with exponential discounting}
+Here, we add exponential discounting to the single-compartment SIR model. 
+Adding exponential discounting to the cost function in Eq. \ref{eq:cost}, we have:
+\begin{equation}
+e^{-\alpha t}\left(-a\rm{ln}({\beta})+c\beta+\frac{\beta IS}{N}\right)
+\end{equation}
+
+ The full Lagrangian equation becomes:
 \begin{equation}
 \begin{split}
-\mathcal{L} =e^{-\alpha t} \left(-a \rm {ln}({\beta})+c\beta+\frac{\beta IS}{N} \right)+\\
-\lambda_S(\dot{S} +\frac{\beta IS}{N}-b)+\\
+\mathcal{L} =e^{-\alpha t} \left(-a \rm {ln}({\beta})+c\beta+\frac{\beta IS}{N}\right) +\\
+\lambda_S(\dot{S} +\frac{\beta IS}{N})+\\
 \lambda_I(\dot{I}-\frac{\beta IS}{N}+\gamma I)
 \end{split}
+\end{equation}
+
+Applying Eq. \ref{eq:EL} with $x_i = S$, we have 
+\begin{equation}
+\dot{\lambda}_S = e^{-\alpha t}(\frac{\beta I}{N})+\lambda_S \frac{\beta I}{N}-\lambda_I \frac{\beta I}{N}
+\end{equation}
+which becomes
+\begin{equation}
+\dot{\lambda}_S = \frac{\beta I}{N}\left( e^{\alpha t}+\lambda_S-\lambda_I \right)
+\end{equation}
+then, applying Eq. \ref{eq:EL} with $x_i = I$, we get:
+\begin{equation}
+\dot{\lambda}_I = e^{-\alpha t}\frac{\beta S}{N}+\lambda_S \frac{\beta S}{N}+\lambda_I(\gamma-\frac{\beta S}{N})
+\end{equation}
+which becomes
+\begin{equation}
+\dot{\lambda}_I = \frac{\beta S}{N}(e^{\alpha t}+\lambda_S-\lambda_I)+\gamma \lambda_I
+\end{equation}
+then, applying Eq. \ref{eq:EL} with $x_i = \beta$, we get:
+\begin{equation}
+0=e^{-\alpha t}(-\frac{a}{\beta}+c+\frac{IS}{N})+(\lambda_S-\lambda_I)\frac{IS}{N}
+\end{equation}
+\begin{equation}
+\frac{a}{\beta} = c+\frac{IS}{N}+e^{\alpha t}(\lambda_S-\lambda_I)\frac{IS}{N}
+\end{equation}
+
+\begin{equation}
+\frac{a}{\beta} = c+\frac{IS}{N}(1+e^{\alpha t}(\lambda_S-\lambda_I))
+\end{equation}
+
+\begin{equation}
+\beta = \frac{a}{c+\frac{IS}{N}(1+e^{\alpha t}\lambda_S-e^{\alpha t}\lambda_I)}
 \end{equation}
 
 \section{Multi-Compartment SIR Model}

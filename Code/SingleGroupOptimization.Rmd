@@ -18,15 +18,15 @@ oneComparmentSIR <- function(x, y, parms) {
         LambdaS <- y[3]
         LambdaI <- y[4]
         
-        beta = a/(c+(I*S)/N*(1-LambdaS-LambdaI))
+        beta = a/(c+(I*S)/N*(1+LambdaS-LambdaI))
         
         dS <- -beta*S*I/N
         
         dI <- beta*S*I/N-gamma*I
         
-        dLambdaS <- beta*I/N*(1+LambdaS)
+        dLambdaS <- beta*I/N*(1+LambdaS-LambdaI)
         
-        dLambdaI <- beta*S/N*(1-LambdaS-LambdaI)+gamma*LambdaI
+        dLambdaI <- beta*S/N*(1+LambdaS-LambdaI)+gamma*LambdaI
 
 
      
@@ -59,7 +59,7 @@ N <- 1000
 R0 <- 2.5
 gamma <- 1/14
 beta0 <- R0*gamma
-c <- 10
+c <- 2
 a <- beta0*c
 ```
 
@@ -68,14 +68,14 @@ a <- beta0*c
 Functions for solving boundary value problems include bvptwp, bvpcol, and bvpshoot
 
 ```{r}
-I0 <- 300
+I0 <- 30
 yini = c(N-I0,I0,NA,NA)
 yend = c(NA,NA,0,0)
-t <- seq(0,1000,2)
+t <- seq(0,100,2)
 ```
 
 ```{r}
-if(FALSE){
+if(TRUE){
 sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(a = a,c=c,N=N),func = oneComparmentSIR)
 S <- sol[,2]
 I <- sol[,3]
@@ -116,7 +116,7 @@ out <- ode(y = yini[1:2], times = t, func = oneComparmentSIRmyopic , parms = lis
 
 Sm <- out[,2]
 Im <- out[,3]
-R0m = a/(c+(I*S)/N)/gamma
+R0m = a/(c+(Im*Sm)/N)/gamma
 
 plot(Sm)
 plot(Im)

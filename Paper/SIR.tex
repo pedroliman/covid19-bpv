@@ -50,6 +50,17 @@
 \renewcommand{\cftsecfont}{\rmfamily\mdseries\upshape}
 \renewcommand{\cftsecpagefont}{\rmfamily\mdseries\upshape} % No bold!
 
+\usepackage[inline]{trackchanges}
+%\usepackage[finalnew]{trackchanges}
+%finalold - Reject all edits. 
+%finalnew - Accept all edits. 
+%footnotes - Display edits as footnotes. 
+%margins  - Display edits as margin notes. 
+%inline  - Display edits inline.
+\soulregister\ref7
+\soulregister\cite7
+\addeditor{rv}
+
 %%% END Article customizations
 
 %%% The "real" document content comes below...
@@ -140,6 +151,8 @@ When the infection rate is very low, we expect $\beta$ to be:
 \frac{a}{c}
 \end{equation}
 
+\note[rv]{Seems to me that the problem is only relevant if $R_0>1$. If $R_0\sim 1$ an $R_0>1$, then $IS/N\sim I$ which is small. Hence since $R_0=\beta/\gamma$ we have $a>c\gamma$}
+
 
 Individual, myopic optimum: 
 \begin{equation}
@@ -165,7 +178,7 @@ Adding exponential discounting to the cost function in Eq. \ref{eq:cost}, we hav
 \begin{equation}
 e^{-\alpha t}\left(-a\rm{ln}({\beta})+c\beta+\frac{\beta IS}{N}\right)
 \end{equation}
-
+\note[rv]{I see why you adde the ddscounting on the cost function. But for large $\alpha$ we do not recover the Myopic formulation. Might the discounting be placed on the SIR constraints?}
  The full Lagrangian equation becomes:
 \begin{equation}
 \begin{split}
@@ -181,7 +194,7 @@ Applying Eq. \ref{eq:EL} with $x_i = S$, we have
 \end{equation}
 which becomes
 \begin{equation}
-\dot{\lambda}_S = \frac{\beta I}{N}\left( e^{\alpha t}+\lambda_S-\lambda_I \right)
+\dot{\lambda}_S = \frac{\beta I}{N}\left( e^{-\alpha t}+\lambda_S-\lambda_I \right)
 \end{equation}
 then, applying Eq. \ref{eq:EL} with $x_i = I$, we get:
 \begin{equation}
@@ -189,7 +202,7 @@ then, applying Eq. \ref{eq:EL} with $x_i = I$, we get:
 \end{equation}
 which becomes
 \begin{equation}
-\dot{\lambda}_I = \frac{\beta S}{N}(e^{\alpha t}+\lambda_S-\lambda_I)+\gamma \lambda_I
+\dot{\lambda}_I = \frac{\beta S}{N}(e^{-\alpha t}+\lambda_S-\lambda_I)+\gamma \lambda_I
 \end{equation}
 then, applying Eq. \ref{eq:EL} with $x_i = \beta$, we get:
 \begin{equation}

@@ -129,3 +129,39 @@ plot(R0m-R0)
 ```
 
 
+
+# Next steps
+
+1. Explore different time horizons. Look at how results change with time horizons. Look at how the effect of myopic decisions effects - (i.e., how forward looking are you). 
+2. Look at an exponential decay in weighing future payoffs. If we multiply the cost function by an exp decay - then there is always a fixed time horizon. 
+3. Explore different cost functions. Currently we have Cost function $$-a\rm{ln}({\beta})+c\beta+\frac{\beta IS}{N}$$. Explore a Cobb–Douglas cost function. Let's try to show that the results are robust to the choice of the cost function (within reason). As long as the cost function is monotonically increasing and make it go to $\infty$ at $0$.  
+4. See if the SEIR model gives a different prediction OR a model with asykmpotomatic such as :
+```{r echo=FALSE, fig.height=1, fig.width=3.5,echo=FALSE}
+ grViz("
+      digraph boxes_and_circles {
+      
+      # a 'graph' statement
+      graph [overlap = true, fontsize = 10,layout = dot,rankdir = LR]
+      
+      
+      node [shape = circle,
+      fixedsize = true,style = filled,fillcolor = gray90,
+      width = 0.9] // sets as circles
+      S[label = 'S']; P[label = 'P'] ;
+      I[label = 'I']; A[label = 'A'];
+      D[label = 'D']; R[label = 'R']; 
+    
+      
+      # several 'edge' statements
+      S->P [label = '&lambda;'] 
+      P->I [label = <&gamma;<SUB>s</SUB>>] P->A [label =  <&gamma;<SUB>a</SUB>>]
+      I->D [label = '&mu;'] I->R [label = '&xi;'] 
+      A->R [label='&pi;']
+      }
+      ",width=700, height=400)
+```
+where $P$ can be either infectious or latent. 
+5. Consider now two age groups. 
+6. Consider a system of two geographical areas each with their own seperate model. Now introduce a coupling and exoplore results with different coupling. Here we are thinking the Sweden vs Denmark case where each is following a different strategy. 
+
+

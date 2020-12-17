@@ -13,7 +13,7 @@ biblio-style: plain
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 remove(list = ls())
 # Needed packages to perform the analysis
 load <- function(pkg){

@@ -15,7 +15,6 @@ load <- function(pkg){
 packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
               "ggplot2","scales","ggthemes","bvpSolve","deSolve")
 load(packages)
-
 ```
 
 

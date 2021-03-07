@@ -50,16 +50,17 @@
 \renewcommand{\cftsecfont}{\rmfamily\mdseries\upshape}
 \renewcommand{\cftsecpagefont}{\rmfamily\mdseries\upshape} % No bold!
 
-\usepackage[inline]{trackchanges}
+% Raff, it seems track changes is not available in overleaf, I will just comment this.
+%\usepackage[inline]{trackchanges}
 %\usepackage[finalnew]{trackchanges}
 %finalold - Reject all edits. 
 %finalnew - Accept all edits. 
 %footnotes - Display edits as footnotes. 
 %margins  - Display edits as margin notes. 
 %inline  - Display edits inline.
-\soulregister\ref7
-\soulregister\cite7
-\addeditor{rv}
+%\soulregister\ref7
+%\soulregister\cite7
+%\addeditor{rv}
 
 %%% END Article customizations
 
@@ -73,7 +74,17 @@
 \begin{document}
 \maketitle
 
+\section{Introduction}
+
+[Introduce the Mitigation vs Suppression debate.]
+
+[Refer to other papers that analyse tradeoffs between economic and health outcomes.]
+
+[State how this analysis contributes to this debate: We explicitly account for the pandemic time horizon, the relative costs of social distancing vs infection and how agents optimize the decision variable.]
+
 \section{Single Compartment SIR Model}
+
+[PNL: Maybe we want to start by stating what the model is, the objective function and then how we solve it.]
 
 Euler-Lagrange Equation:
 \begin{equation}
@@ -89,7 +100,6 @@ Euler-Lagrange Equation:
 \begin{equation}
 \dot{S}= b-\frac{\beta IS}{N}
 \end{equation}
-
 
 
 \begin{equation}

@@ -128,11 +128,23 @@ t <- seq(0,8,1/7) ## 112 days in steps of 2 days assuming 1/gamma=14 days
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 sol.explore <- NULL
-for (tFinal in c(4,8,16,32,64)){
+t.vec <- c(4,8,16,32,64)
+for (tFinal in t.vec){
     t <- seq(0,tFinal,1/7)
+    capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,maxiter = 200))
     
-    capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR))
+res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,xguess = t,yguess = t(sol[,2:5])))
 
+  if(inherits(res, "try-error")){
+    for(tEnd in (sol.prev$tFinal[1]+1):tFinal){
+          t <- seq(0,tEnd,1/7)
+          for(i in 1:7){
+            sol.prev <- rbind(sol.prev,sol.prev[dim(sol.prev)[1],])
+          }
+    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,xguess = t,yguess = t(sol.prev[,2:5])))
+  }}
+sol <- as.data.frame(sol)
+names(sol) <- c("x",as.character(1:4))
     sol <- as.data.frame(sol) %>% 
     rename(tau=x,s='1',i='2',lambda_s='3',lambda_i='4') %>% 
     mutate(R_tau = R_0*c/(c+R_0*s*i*(1+lambda_s-lambda_i)),
@@ -140,7 +152,7 @@ for (tFinal in c(4,8,16,32,64)){
            tFinal=tFinal)
     
     sol.explore  <- bind_rows(sol.explore,sol)
-    
+    sol.prev <- sol
 }
 ```
 

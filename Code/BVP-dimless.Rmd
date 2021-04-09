@@ -132,8 +132,21 @@ c.vec <- seq(0.1,4.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
 R0.vec <-  c(1.5,5)
 i0.vec <- seq(1,51,50)*1e-4
 
+t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
+c.vec <-  seq(0.1,4.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  c(1.5,5)
+i0.vec <- seq(51,1,-50)*1e-3
+
 exper.design <- expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
   mutate(case.id=row_number())
+
+exper.design %>% 
+  mutate(prod=tFinal*c.vec) %>% 
+  filter(prod<1) 
+
+exper.design %>% 
+  mutate(prod=tFinal*c.vec) %>% 
+  filter(prod>1) 
 ```
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}

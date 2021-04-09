@@ -138,13 +138,14 @@ exper.design <- expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>%
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 sol.explore <- NULL
+print(Sys.time())
 for (case.run in 1:nrow(exper.design)){
    
    print(case.run) 
    case.id <- exper.design$case.id[case.run]
    tFinal <- exper.design$tFinal[case.run]
    c <- exper.design$c[case.run]
-   R0 <- exper.design$R0[case.run]
+   R_0 <- exper.design$R0[case.run]
    i0 <- exper.design$i0[case.run]
    
     t <- seq(0,tFinal,1/7)
@@ -186,6 +187,7 @@ for (case.run in 1:nrow(exper.design)){
     
     sol.prev <- sol
 }
+print(Sys.time())
 ```
 
 ```{r}

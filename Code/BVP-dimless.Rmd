@@ -111,40 +111,80 @@ oneComparmentSIR <- function(x, y, parms) {
 }
 ```
 
-```{r}
-R_0 <- 2.5
-c <- 2e3
-```
 
 Functions for solving boundary value problems include bvptwp, bvpcol,
 and bvpshoot
 
 ```{r}
-i0 <- 0.03
+i0 <- 0.001
 yini = c(1-i0,i0,NA,NA)
 yend = c(NA,NA,0,0)
 t <- seq(0,8,1/7) ## 112 days in steps of 2 days assuming 1/gamma=14 days
+
+t.vec <- seq(8,64,1) # from 112 days  to just under 2.5 years of social distancing
+c.vec <- seq(0.1,4.1,0.5)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  seq(1.5,5,0.5)
+i0.vec <- seq(1,51,5)*1e-4
+
+
+t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
+c.vec <- seq(0.1,4.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  c(1.5,5)
+i0.vec <- seq(1,51,50)*1e-4
+
+exper.design <- expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
+  mutate(case.id=row_number())
 ```
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 sol.explore <- NULL
-t.vec <- c(4,8,16,32,64)
-for (tFinal in t.vec){
+for (case.run in 1:nrow(exper.design)){
+   
+   print(case.run) 
+   case.id <- exper.design$case.id[case.run]
+   tFinal <- exper.design$tFinal[case.run]
+   c <- exper.design$c[case.run]
+   R0 <- exper.design$R0[case.run]
+   i0 <- exper.design$i0[case.run]
+   
     t <- seq(0,tFinal,1/7)
-    capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,maxiter = 200))
+    yini = c(1-i0,i0,NA,NA)
     
-res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,xguess = t,yguess = t(sol[,2:5])))
-
-  if(inherits(res, "try-error")){
+    capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                                   func = oneComparmentSIR,maxiter = 200))
+    
+    # Here we try the two-point method. Note we silenced the error so if it doesn't converge
+    # we use the shooting method solution. 
+    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                         func = oneComparmentSIR,xguess = t,yguess = t(sol[,2:5])),
+               silent=TRUE)
+    
+    if(inherits(res, "try-error")){
     for(tEnd in (sol.prev$tFinal[1]+1):tFinal){
+          # Populate the yguess in the two-point method in sol.prev
           t <- seq(0,tEnd,1/7)
           for(i in 1:7){
             sol.prev <- rbind(sol.prev,sol.prev[dim(sol.prev)[1],])
           }
-    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),func = oneComparmentSIR,xguess = t,yguess = t(sol.prev[,2:5])))
-  }}
-sol <- as.data.frame(sol)
-names(sol) <- c("x",as.character(1:4))
+          # create the yguess with the state variables
+          yguess <- t(sol.prev[,2:5])
+          # Run the two point-method using the ygess.
+          res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                             func = oneComparmentSIR,xguess = t,yguess = yguess))
+    }}
+    sol <- as.data.frame(sol)
+    names(sol) <- c("x",as.character(1:4))
+    
+    sol <- as.data.frame(sol) %>% 
+    rename(tau=x,s='1',i='2',lambda_s='3',lambda_i='4') %>% 
+    mutate(R_tau = R_0*c/(c+R_0*s*i*(1+lambda_s-lambda_i)),
+           Rt= R_tau*s,
+           tFinal=tFinal,
+           case.id = case.id)
+    
+    sol.explore  <- bind_rows(sol.explore,sol)
+    
+    sol.prev <- sol
 }
 ```
 

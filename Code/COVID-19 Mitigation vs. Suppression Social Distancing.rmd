@@ -13,7 +13,7 @@ biblio-style: plain
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 remove(list = ls())
 # Needed packages to perform the analysis
 load <- function(pkg){
@@ -148,7 +148,7 @@ N <- 1000
 R0 <- 2.5
 gamma <- 1/14
 beta0 <- R0*gamma
-c <- 2e3
+c <- 2e1
 a <- beta0*c
 ```
 

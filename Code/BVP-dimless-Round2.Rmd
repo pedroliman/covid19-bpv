@@ -27,7 +27,7 @@ load <- function(pkg){
 } 
 
 packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
-              "ggplot2","scales","ggthemes","bvpSolve","deSolve")
+              "ggplot2","scales","ggthemes","bvpSolve","deSolve","plyr")
 load(packages)
 ```
 
@@ -127,9 +127,9 @@ R0.vec <-  seq(1.5,5,0.5)
 i0.vec <- seq(1,51,5)*1e-4
 
 
-t.vec <- 4^seq(2,5,1)/2 # from 112 days  to just under 2.5 years of social distancing
-c.vec <- .25^seq(2,5,1)*2 # chosen such that  mean(c.vec%o%t.vec)~1
-R0.vec <-  c(1.5,5)
+t.vec <- 2^seq(3,7,1) # from 112 days  to just under 2.5 years of social distancing
+c.vec <- 0.025*2^seq(0,4,1) # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  c(1.5,2.5,5)
 i0.vec <- seq(1,51,10)*1e-4
 
 #t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
@@ -137,8 +137,8 @@ i0.vec <- seq(1,51,10)*1e-4
 #R0.vec <-  c(1.5,5)
 #i0.vec <- seq(51,1,-10)*1e-3
 
-exper.design <- expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
-  mutate(case.id=row_number())
+exper.design <- base::expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
+  dplyr::mutate(case.id=row_number())
 
 exper.design %>% 
   mutate(prod=tFinal*c) %>% 
@@ -149,6 +149,21 @@ exper.design %>%
   filter(prod>1) 
 use.steps <- FALSE
 ```
+
+```{r}
+sol.explore6 <- read.csv("INTERMEDIATE/sol.explore-step6.csv")
+exper.design6 <- read.csv("INTERMEDIATE/exper.design-step6.csv")
+```
+
+```{r}
+exper.design$case.id <- exper.design$case.id + dim(exper.design6)[1]
+exper.design$twp.success <- FALSE
+```
+
+```{r}
+exper.design7 <- rbind.fill(exper.design,exper.design6) 
+```
+
 ```{r}
 exper.design$shoot.success <- NA
 exper.design$twp.success <- NA
@@ -217,8 +232,8 @@ for (case.run in 1:nrow(exper.design)){
     sol.prev <- sol
 }
 print(Sys.time())
-write.csv(sol.explore,"INTERMEDIATE/sol.explore.csv")
-write.csv(exper.design,"INTERMEDIATE/exper.design.csv")
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-round2.csv")
+write.csv(exper.design,"INTERMEDIATE/exper.design-round2.csv")
 
 ```
 

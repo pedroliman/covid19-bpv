@@ -139,14 +139,15 @@ and bvpshoot
 ```
 
 ```{r}
-sol.explore <- read.csv("INTERMEDIATE/sol.explore.csv")
-exper.design <- read.csv("INTERMEDIATE/exper.design.csv")
+sol.explore <- read.csv("INTERMEDIATE/sol.explore-step7.csv")
+exper.design <- read.csv("INTERMEDIATE/exper.design-step7.csv")
 ```
 
 ```{r}
 exper.design.s <- exper.design[exper.design$twp.success==TRUE,]
-exper.design.u <- exper.design[exper.design$twp.success==FALSE,]
+exper.design.u <- exper.design[exper.design$twp.success==FALSE&exper.design$c %in% c(0.025,0.05,0.1,0.125,0.2,0.4),]
 ```
+
 
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
@@ -156,7 +157,7 @@ for (case.run in exper.design.u$case.id){
   same.tFinal <- subset(exper.design.s,tFinal==exper.design.u[which(exper.design.u$case.id == case.run),"tFinal"]) 
   
   if(dim(same.tFinal)[1]==0){
-    same.tFinal <- exper.design.s[sample(1:dim(exper.design.s)[1],3),]
+    same.tFinal <- exper.design.s[sample(1:dim(exper.design.s)[1],10),]
   }
   
    print(case.run) 
@@ -165,6 +166,7 @@ for (case.run in exper.design.u$case.id){
    c <- exper.design$c[case.run]
    R_0 <- exper.design$R0[case.run]
    i0 <- exper.design$i0[case.run]
+     print(paste("case id is the same as case run?",case.run==case.id))
    print(tFinal)
     t <- seq(0,tFinal,1/7)
     yini = c(1-i0,i0,NA,NA)
@@ -178,12 +180,26 @@ for (case.run in exper.design.u$case.id){
       } else if(length(t) > dim(guess)[1]){
         guess[(dim(guess)[1]+1):length(t),]<- guess[dim(guess)[1],]
       }
+      worked <- TRUE
+      if(R_0>=same.tFinal[which(same.tFinal$case.id==case.id.c),"R0"]){
     # Here we try the two-point method. Note we silenced the error so if it doesn't converge
     # we use the shooting method solution. 
-    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+        R_0.vec <- seq(same.tFinal[which(same.tFinal$case.id==case.id.c),"R0"],R_0,by=0.1)
+        for(R_0 in R_0.vec){
+          if(worked){
+    res <- try(guess <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
                          func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax=4000),
                silent=TRUE)
-    exper.design[which(exper.design$case.id ==case.run),"twp.success"] <- !inherits(res,"try-error")
+    worked <- !inherits(res,"try-error")
+    print(paste("did it work?",worked))
+    if(worked){
+    names(guess) <- c("tau","s","i","lambda_s","lambda_i")
+    sol <- guess
+    }
+          }
+    }
+    }
+    exper.design[which(exper.design$case.id==case.run),"twp.success"] <- !inherits(res,"try-error")
 
     if(!inherits(res, "try-error")){
    solved <- TRUE
@@ -208,8 +224,8 @@ for (case.run in exper.design.u$case.id){
     }
     print(solved)}
 print(Sys.time())
-write.csv(sol.explore,"INTERMEDIATE/sol.explore-step2.csv")
-write.csv(exper.design,"INTERMEDIATE/exper.design-step2.csv")
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-step8.csv")
+write.csv(exper.design,"INTERMEDIATE/exper.design-step8.csv")
 
 ```
 

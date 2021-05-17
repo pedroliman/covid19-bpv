@@ -139,8 +139,8 @@ and bvpshoot
 ```
 
 ```{r}
-sol.explore <- read.csv("INTERMEDIATE/sol.explore.csv")
-exper.design <- read.csv("INTERMEDIATE/exper.design.csv")
+sol.explore <- read.csv("INTERMEDIATE/sol.explore-step6.csv")
+exper.design <- read.csv("INTERMEDIATE/exper.design-round2.csv")
 ```
 
 ```{r}
@@ -148,29 +148,36 @@ exper.design.s <- exper.design[exper.design$twp.success==TRUE,]
 exper.design.u <- exper.design[exper.design$twp.success==FALSE,]
 ```
 
+```{r}
+
+exper.design <- exper.design[order(exper.design$case.id),]
+```
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 print(Sys.time())
 for (case.run in exper.design.u$case.id){
+  print(case.run)
+
   
-  same.tFinal <- subset(exper.design.s,tFinal==exper.design.u[which(exper.design.u$case.id == case.run),"tFinal"]) 
-  
-  if(dim(same.tFinal)[1]==0){
-    same.tFinal <- exper.design.s[sample(1:dim(exper.design.s)[1],3),]
-  }
-  
-   print(case.run) 
    case.id <- exper.design$case.id[case.run]
+   print(paste("case run is case id?",case.id == case.run))
    tFinal <- exper.design$tFinal[case.run]
    c <- exper.design$c[case.run]
    R_0 <- exper.design$R0[case.run]
    i0 <- exper.design$i0[case.run]
+   
+     same.tFinal <- subset(exper.design.s,tFinal==exper.design.u[which(exper.design.u$case.id == case.run),"tFinal"]&i0==exper.design.u[which(exper.design.u$case.id == case.run),"i0"]) 
+  
+  if(dim(same.tFinal)[1]==0){
+    same.tFinal <- exper.design.s[sample(1:dim(exper.design.s)[1],20),]
+  }
    print(tFinal)
     t <- seq(0,tFinal,1/7)
     yini = c(1-i0,i0,NA,NA)
     yend = c(NA,NA,0,0)
     solved <- FALSE
     for(case.id.c in same.tFinal$case.id){
+      print(case.id.c)
      if(solved != TRUE){
       guess <- subset(sol.explore,case.id == case.id.c)
       if(length(t) < dim(guess)[1]){
@@ -183,7 +190,7 @@ for (case.run in exper.design.u$case.id){
     res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
                          func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax=4000),
                silent=TRUE)
-    exper.design[which(exper.design$case.id ==case.run),"twp.success"] <- !inherits(res,"try-error")
+    exper.design[which(exper.design$case.id==case.run),"twp.success"] <- !inherits(res,"try-error")
 
     if(!inherits(res, "try-error")){
    solved <- TRUE
@@ -203,13 +210,14 @@ for (case.run in exper.design.u$case.id){
            case.id = case.id)
     
     sol.explore  <- bind_rows(sol.explore,sol)
+    print(paste0("case id in case id c?",case.id %in% sol.explore$case.id))
     }
      }
     }
     print(solved)}
 print(Sys.time())
-write.csv(sol.explore,"INTERMEDIATE/sol.explore-step2.csv")
-write.csv(exper.design,"INTERMEDIATE/exper.design-step2.csv")
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-step7.csv")
+write.csv(exper.design,"INTERMEDIATE/exper.design-step7.csv")
 
 ```
 

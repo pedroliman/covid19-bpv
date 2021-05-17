@@ -27,7 +27,7 @@ load <- function(pkg){
 } 
 
 packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
-              "ggplot2","scales","ggthemes","bvpSolve","deSolve")
+              "ggplot2","scales","ggthemes","bvpSolve","deSolve","class","pracma")
 load(packages)
 ```
 
@@ -111,6 +111,30 @@ oneComparmentSIR <- function(x, y, parms) {
 }
 ```
 
+```{r}
+oneComparmentSIRbackwards <- function(x, y, parms) {
+
+    with(as.list(c(y, parms)),{
+        s <- y[1] 
+        i <- y[2] 
+        lambda_s <- y[3]
+        lambda_i <- y[4]
+        
+        R_tau = R_0*c/(c+R_0*s*i*(1+lambda_s-lambda_i))
+        
+        ds <- R_tau *s *i
+        
+        di <- -i * (R_tau*s-1)
+        
+        dlambda_s <- -R_tau*i*(1+lambda_s-lambda_i)
+        
+        dlambda_i <- -(R_tau*s*(1+lambda_s-lambda_i)+lambda_i)
+
+    return(list(c(ds,di,dlambda_s,dlambda_i)))
+    })
+}
+```
+
 
 Functions for solving boundary value problems include bvptwp, bvpcol,
 and bvpshoot
@@ -139,56 +163,117 @@ and bvpshoot
 ```
 
 ```{r}
-sol.explore <- read.csv("INTERMEDIATE/sol.explore.csv")
-exper.design <- read.csv("INTERMEDIATE/exper.design.csv")
+sol.explore <- read.csv("INTERMEDIATE/sol.explore-step11.csv")
+exper.design <- read.csv("INTERMEDIATE/exper.design-step11.csv")
+```
+
+
+
+
+
+```{r}
+param.vec <- c("tFinal","c","R0","i0")
+exper.design.std <- exper.design
+params.scaled <- scale(exper.design[,param.vec])
+exper.design.std[,param.vec] <- params.scaled
+```
+
+```{r}
+dist.matrix <- dist(params.scaled,upper=TRUE)
+```
+
+```{r}
+dist.matrix <- as.matrix(dist.matrix)
 ```
 
 ```{r}
 exper.design.s <- exper.design[exper.design$twp.success==TRUE,]
-exper.design.u <- exper.design[exper.design$twp.success==FALSE,]
+exper.design.u <- exper.design[exper.design$twp.success==FALSE&exper.design$c %in% c(.025, 0.05, 0.1, 0.2, 0.4),]
+exper.design.std.s <- exper.design.std[exper.design$twp.success==TRUE,]
+exper.design.std.u <- exper.design.std[exper.design$twp.success==FALSE,]
 ```
 
+```{r}
+exper.design$twp.success11 <- NA
+```
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 print(Sys.time())
 for (case.run in exper.design.u$case.id){
+        c.tried <- c()
+
+
   
-  same.tFinal <- subset(exper.design.s,tFinal==exper.design.u[which(exper.design.u$case.id == case.run),"tFinal"]) 
-  
-  if(dim(same.tFinal)[1]==0){
-    same.tFinal <- exper.design.s[sample(1:dim(exper.design.s)[1],3),]
-  }
-  
-   print(case.run) 
+   print(paste0("Case run is",case.run)) 
    case.id <- exper.design$case.id[case.run]
    tFinal <- exper.design$tFinal[case.run]
    c <- exper.design$c[case.run]
    R_0 <- exper.design$R0[case.run]
    i0 <- exper.design$i0[case.run]
-   print(tFinal)
     t <- seq(0,tFinal,1/7)
+    t.temp <- t
     yini = c(1-i0,i0,NA,NA)
     yend = c(NA,NA,0,0)
     solved <- FALSE
-    for(case.id.c in same.tFinal$case.id){
-     if(solved != TRUE){
+    
+    print(paste("tFinal of case is",tFinal))
+        print(paste("R0 is",R_0))
+        print(paste("c is",c))
+print(paste("c*tFinal is",tFinal*c))
+  same.c <- exper.design.s[exper.design.s$tFinal <= tFinal,]
+ # dists <- dist.matrix[same.c$case.id,case.run]
+#  cases <- names(sort(dists)[1:5])
+#  same.c <- subset(exper.design.s,case.id %in% cases)
+    solved <- FALSE
+    for(case.id.c in same.c$case.id){
+     if(solved == FALSE){
       guess <- subset(sol.explore,case.id == case.id.c)
-      if(length(t) < dim(guess)[1]){
+
+ 
+      worked <- TRUE
+if(tFinal>=same.c[which(same.c$case.id==case.id.c),"tFinal"]&!(same.c[which(same.c$case.id==case.id.c),"tFinal"] %in% c.tried)){
+    # Here we try the two-point method. Note we silenced the error so if it doesn't converge
+    # we use the shooting method solution. 
+  tFinal.start <- same.c[which(same.c$case.id==case.id.c),"tFinal"]
+  tFinal.end <- tFinal
+  tFinal.vec <- seq(tFinal.start,tFinal.end,1)
+  #print(paste("tFinal vec is",tFinal.vec))
+        for(tFinal in tFinal.vec){
+          
+          if(worked){
+                      print(paste("tFinal is",tFinal))
+
+      t <- seq(0,tFinal,1/7)
+guess <- as.data.frame(guess)
+     if(length(t) < dim(guess)[1]){
         guess <- guess[1:length(t),]
       } else if(length(t) > dim(guess)[1]){
         guess[(dim(guess)[1]+1):length(t),]<- guess[dim(guess)[1],]
       }
-    # Here we try the two-point method. Note we silenced the error so if it doesn't converge
-    # we use the shooting method solution. 
-    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
-                         func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax=4000),
-               silent=TRUE)
-    exper.design[which(exper.design$case.id ==case.run),"twp.success"] <- !inherits(res,"try-error")
+    res <- try(guess <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                         func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax = 4000),
+               silent=FALSE)
+        t.temp <- guess[,1]
+    print(length(t.temp))
+    worked <- !inherits(res,"try-error")
+    print(paste("did it work?",worked))
+    if(worked){
+      c.tried <- c(c.tried,tFinal.start)
+    names(guess) <- c("tau","s","i","lambda_s","lambda_i")
+    sol <- guess
+    }
+          }
+    }
+}
+     }
+    
+    exper.design[case.run,"twp.success"] <- !inherits(res,"try-error")
+    exper.design[case.run,"twp.success6"] <- !inherits(res,"try-error")
 
     if(!inherits(res, "try-error")){
    solved <- TRUE
     }
-    
+          
     if(solved==TRUE){
       sol.explore <- subset(sol.explore,case.id!=case.run)
     sol <- as.data.frame(sol)
@@ -205,11 +290,10 @@ for (case.run in exper.design.u$case.id){
     sol.explore  <- bind_rows(sol.explore,sol)
     }
      }
-    }
     print(solved)}
 print(Sys.time())
-write.csv(sol.explore,"INTERMEDIATE/sol.explore-step2.csv")
-write.csv(exper.design,"INTERMEDIATE/exper.design-step2.csv")
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-step12.csv",row.names = FALSE)
+write.csv(exper.design,"INTERMEDIATE/exper.design-step12.csv",row.names = FALSE)
 
 ```
 

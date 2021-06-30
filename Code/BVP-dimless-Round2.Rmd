@@ -1,0 +1,380 @@
+---
+title: "COVID-19 Mitigation vs. Suppression Social Distancing"
+author:
+- name: Sarah Nowak, Pedro de Lima, Raffaele Vardavas 
+  affiliation: RAND Corporation
+#bibliography: ../../WriteUp/COVID-19.bib
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#output: html_notebook
+output:
+  rmdformats::readthedown
+pandoc_args: --natbib
+biblio-style: plain
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+remove(list = ls())
+# Needed packages to perform the analysis
+load <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+} 
+
+packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
+              "ggplot2","scales","ggthemes","bvpSolve","deSolve","plyr")
+load(packages)
+```
+
+# Introducton
+
+# Single Compartment SIR Model
+
+
+We have $t = \frac{\tau}{\gamma}$, $s = S/N$, $i = I/N$,
+\begin{equation}
+\dot{s}= -R_\tau si,
+\end{equation} where here $\dot{X}=dX/d\tau$, $R_0= \beta_\max/\gamma$,
+$R_\tau=\beta(\tau)/\gamma$ and $R_{t}=R_\tau s$.
+
+
+```{=tex}
+\begin{equation}
+\dot{i}=i (R_\tau s-1) = i (R_t-1)
+\label{eq:didt}
+\end{equation}
+```
+```{=tex}
+\begin{equation}
+\dot{\lambda_s}= R_{\tau} i (1 + \lambda_s-\lambda_i)
+\end{equation}
+```
+```{=tex}
+\begin{equation}
+\dot{\lambda_i}= R_{\tau}s(1+\lambda_s-\lambda_i)+\lambda_i
+\end{equation}
+```
+
+The full Lagrangian is:
+
+\begin{equation}
+\mathcal{L} = -c \ln\left(\frac{R_{\tau}}{R_0}\right)+c\left(\frac{R_{\tau}}{R_0}\right)+R_{\tau} si +
+\lambda_s\left(\frac{d}{d \tau}{s} +R_{\tau} si\right)+
+\lambda_i\left(\frac{d}{d \tau}i-R_{\tau}si+i \right)
+\end{equation}
+
+Apply equation 1 $x_i = s$
+
+\begin{equation}
+\dot{\lambda}_s = R_{\tau} i (1 + \lambda_s-\lambda_i)
+\end{equation}
+
+Apply equation 1 $x_i = i$:
+\begin{equation}
+\dot{\lambda}_i = R_{\tau}s(1+\lambda_s-\lambda_i)+\lambda_i
+\end{equation}
+
+Apply equation 1 $x_i = R_{\tau}$:
+
+\begin{equation}
+R_{\tau} = \frac{R_0c}{c+R_0si(1+\lambda_s-\lambda_i)}
+\end{equation}
+
+## Implementation
+
+```{r}
+oneComparmentSIR <- function(x, y, parms) {
+
+    with(as.list(c(y, parms)),{
+        s <- y[1] 
+        i <- y[2] 
+        lambda_s <- y[3]
+        lambda_i <- y[4]
+        
+        R_tau = R_0*c/(c+R_0*s*i*(1+lambda_s-lambda_i))
+        
+        ds <- -R_tau *s *i
+        
+        di <- i * (R_tau*s-1)
+        
+        dlambda_s <- R_tau*i*(1+lambda_s-lambda_i)
+        
+        dlambda_i <- R_tau*s*(1+lambda_s-lambda_i)+lambda_i
+
+    return(list(c(ds,di,dlambda_s,dlambda_i)))
+    })
+}
+```
+
+
+Functions for solving boundary value problems include bvptwp, bvpcol,
+and bvpshoot
+
+```{r}
+i0 <- 0.001
+yini = c(1-i0,i0,NA,NA)
+yend = c(NA,NA,0,0)
+t <- seq(0,8,1/7) ## 112 days in steps of 2 days assuming 1/gamma=14 days
+
+t.vec <- seq(8,64,1) # from 112 days  to just under 2.5 years of social distancing
+c.vec <- seq(0.1,4.1,0.5)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  seq(1.5,5,0.5)
+i0.vec <- seq(1,51,5)*1e-4
+
+
+t.vec <- 2^seq(3,7,1) # from 112 days  to just under 2.5 years of social distancing
+c.vec <- 0.025*2^seq(0,4,1) # chosen such that  mean(c.vec%o%t.vec)~1
+R0.vec <-  c(1.5,2.5,5)
+i0.vec <- seq(1,51,10)*1e-4
+
+#t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
+#c.vec <-  seq(0.1,12.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+#R0.vec <-  c(1.5,5)
+#i0.vec <- seq(51,1,-10)*1e-3
+
+exper.design <- base::expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
+  dplyr::mutate(case.id=row_number())
+
+exper.design %>% 
+  mutate(prod=tFinal*c) %>% 
+  filter(prod<1) 
+
+exper.design %>% 
+  mutate(prod=tFinal*c) %>% 
+  filter(prod>1) 
+use.steps <- FALSE
+```
+
+```{r}
+sol.explore6 <- read.csv("INTERMEDIATE/sol.explore-step6.csv")
+exper.design6 <- read.csv("INTERMEDIATE/exper.design-step6.csv")
+```
+
+```{r}
+exper.design$case.id <- exper.design$case.id + dim(exper.design6)[1]
+exper.design$twp.success <- FALSE
+```
+
+```{r}
+exper.design7 <- rbind.fill(exper.design,exper.design6) 
+```
+
+```{r}
+exper.design$shoot.success <- NA
+exper.design$twp.success <- NA
+```
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+print(Sys.time())
+for (case.run in 1:nrow(exper.design)){
+   
+   print(case.run) 
+   case.id <- exper.design$case.id[case.run]
+   tFinal <- exper.design$tFinal[case.run]
+   c <- exper.design$c[case.run]
+   R_0 <- exper.design$R0[case.run]
+   i0 <- exper.design$i0[case.run]
+   
+    t <- seq(0,tFinal,1/7)
+    yini = c(1-i0,i0,NA,NA)
+    
+    res1 <- try(capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                                   func = oneComparmentSIR,maxiter = 200)))
+    
+    print(paste("bvpshoot success",!inherits(res1,"try-error")))
+    exper.design[case.run,"shoot.success"] <- !inherits(res1,"try-error")
+
+    # Here we try the two-point method. Note we silenced the error so if it doesn't converge
+    # we use the shooting method solution. 
+    res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                         func = oneComparmentSIR,xguess = t,yguess = t(sol[,2:5])),
+               silent=TRUE)
+    print(paste("bvptwp success",!inherits(res,"try-error")))
+    exper.design[case.run,"twp.success"] <- !inherits(res,"try-error")
+
+    if(inherits(res1,"try-error")|inherits(res, "try-error")){
+      if(use.steps){
+    for(tEnd in (sol.prev$tFinal[1]+1):tFinal){
+          # Populate the yguess in the two-point method in sol.prev
+          t <- seq(0,tEnd,1/7)
+          for(i in 1:7){
+            sol.prev <- rbind(sol.prev,sol.prev[dim(sol.prev)[1],])
+          }
+          # create the yguess with the state variables
+          yguess <- t(sol.prev[,2:5])
+          # Run the two point-method using the ygess.
+          res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                             func = oneComparmentSIR,xguess = t,yguess = yguess))
+    }} else{
+      for(col in 1:dim(sol)[2]){
+        print("setting to NA")
+       try(sol[,col] <- NA)}
+    }
+    }
+      
+    sol <- as.data.frame(sol)
+    sol <- sol[,1:5]
+    names(sol) <- c("x",as.character(1:4))
+    
+    sol <- as.data.frame(sol) %>% 
+    rename(tau=x,s='1',i='2',lambda_s='3',lambda_i='4') %>% 
+    mutate(R_tau = R_0*c/(c+R_0*s*i*(1+lambda_s-lambda_i)),
+           Rt= R_tau*s,
+           tFinal=tFinal,
+           case.id = case.id)
+    
+    sol.explore  <- bind_rows(sol.explore,sol)
+    
+    sol.prev <- sol
+}
+print(Sys.time())
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-round2.csv")
+write.csv(exper.design,"INTERMEDIATE/exper.design-round2.csv")
+
+```
+
+```{r}
+
+testing <- sol.explore %>% 
+    select(tau, s, tFinal) %>% 
+  tidyr::gather("agg_variable", "agg_value", -tau, -tFinal)
+
+pS<-ggplot(testing) +
+  geom_line(aes(
+    x = tau,
+    y = agg_value,
+    group = tFinal,
+    colour = tFinal
+  ),
+  size = 1.5) +
+  facet_wrap(~ agg_variable)+
+  xlab("tau") +
+  ylab("prev") +
+  # scale_y_log10(
+  #   breaks = trans_breaks("log10", function(x)
+  #     10 ^ x),
+  #   labels = trans_format("log10", math_format(10 ^ .x))
+  # ) +
+  guides(linetype = T) +
+  theme_economist() +
+  theme(
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16) ,
+    title = element_text(size = 18) ,
+    strip.text = element_text(size = 12) ,
+    axis.title.x = element_text(size = 18) ,
+    axis.title.y = element_text(size = 18),
+    legend.text = element_text(size = 12),
+    legend.title = element_blank()
+  )
+
+testing <- sol.explore %>% 
+    select(tau, i, tFinal) %>% 
+  tidyr::gather("agg_variable", "agg_value", -tau, -tFinal)
+
+pI<-ggplot(testing) +
+  geom_line(aes(
+    x = tau,
+    y = agg_value,
+    group = tFinal,
+    colour = tFinal
+  ),
+  size = 1.5) +
+  facet_wrap(~ agg_variable)+
+  xlab("tau") +
+  ylab("Prev") +
+  # scale_y_log10(
+  #   breaks = trans_breaks("log10", function(x)
+  #     10 ^ x),
+  #   labels = trans_format("log10", math_format(10 ^ .x))
+  # ) +
+  guides(linetype = T) +
+  theme_economist() +
+  theme(
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16) ,
+    title = element_text(size = 18) ,
+    strip.text = element_text(size = 12) ,
+    axis.title.x = element_text(size = 18) ,
+    axis.title.y = element_text(size = 18),
+    legend.text = element_text(size = 12),
+    legend.title = element_blank()
+  )
+
+testing <- sol.explore %>% 
+    select(tau, lambda_s, lambda_i, tFinal) %>% 
+  tidyr::gather("agg_variable", "agg_value", -tau, -tFinal)
+
+pLambda<-ggplot(testing) +
+  geom_line(aes(
+    x = tau,
+    y = agg_value,
+    group = tFinal,
+    colour = tFinal
+  ),
+  size = 1.5) +
+  facet_wrap(~ agg_variable)+
+  xlab("day") +
+  ylab("Lambda") +
+  # scale_y_log10(
+  #   breaks = trans_breaks("log10", function(x)
+  #     10 ^ x),
+  #   labels = trans_format("log10", math_format(10 ^ .x))
+  # ) +
+  guides(linetype = T) +
+  theme_economist() +
+  theme(
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16) ,
+    title = element_text(size = 18) ,
+    strip.text = element_text(size = 12) ,
+    axis.title.x = element_text(size = 18) ,
+    axis.title.y = element_text(size = 18),
+    legend.text = element_text(size = 12),
+    legend.title = element_blank()
+  )
+
+testing <- sol.explore %>% 
+    select(tau, R_tau, Rt, tFinal) %>% 
+  tidyr::gather("agg_variable", "agg_value", -tau, -tFinal)
+
+pR<-ggplot(testing) +
+  geom_line(aes(
+    x = tau,
+    y = agg_value,
+    group = tFinal,
+    colour = tFinal
+  ),
+  size = 1.5) +
+  facet_wrap(~ agg_variable)+
+  xlab("tau") +
+  ylab("Reproductive number") +
+  # scale_y_log10(
+  #   breaks = trans_breaks("log10", function(x)
+  #     10 ^ x),
+  #   labels = trans_format("log10", math_format(10 ^ .x))
+  # ) +
+  guides(linetype = T) +
+  theme_economist() +
+  theme(
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16) ,
+    title = element_text(size = 18) ,
+    strip.text = element_text(size = 12) ,
+    axis.title.x = element_text(size = 18) ,
+    axis.title.y = element_text(size = 18),
+    legend.text = element_text(size = 12),
+    legend.title = element_blank()
+  )
+
+
+print(pS)
+print(pI)
+print(pLambda)
+print(pR)
+```
+

@@ -1,0 +1,228 @@
+---
+title: "COVID-19 Mitigation vs. Suppression Social Distancing"
+author:
+- name: Sarah Nowak, Pedro de Lima, Raffaele Vardavas 
+  affiliation: RAND Corporation
+#bibliography: ../../WriteUp/COVID-19.bib
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#output: html_notebook
+output:
+  rmdformats::readthedown
+pandoc_args: --natbib
+biblio-style: plain
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+remove(list = ls())
+# Needed packages to perform the analysis
+load <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+} 
+
+packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
+              "ggplot2","scales","ggthemes","bvpSolve","deSolve","class","pracma")
+load(packages)
+```
+
+# Introducton
+
+# Single Compartment SIR Model
+
+
+We have $t = \frac{\tau}{\gamma}$, $s = S/N$, $i = I/N$,
+\begin{equation}
+\dot{s}= -R_\tau si,
+\end{equation} where here $\dot{X}=dX/d\tau$, $R_0= \beta_\max/\gamma$,
+$R_\tau=\beta(\tau)/\gamma$ and $R_{t}=R_\tau s$.
+
+
+```{=tex}
+\begin{equation}
+\dot{i}=i (R_\tau s-1) = i (R_t-1)
+\label{eq:didt}
+\end{equation}
+```
+```{=tex}
+\begin{equation}
+\dot{\lambda_s}= R_{\tau} i (1 + \lambda_s-\lambda_i)
+\end{equation}
+```
+```{=tex}
+\begin{equation}
+\dot{\lambda_i}= R_{\tau}s(1+\lambda_s-\lambda_i)+\lambda_i
+\end{equation}
+```
+
+The full Lagrangian is:
+
+\begin{equation}
+\mathcal{L} = -c \ln\left(\frac{R_{\tau}}{R_0}\right)+c\left(\frac{R_{\tau}}{R_0}\right)+R_{\tau} si +
+\lambda_s\left(\frac{d}{d \tau}{s} +R_{\tau} si\right)+
+\lambda_i\left(\frac{d}{d \tau}i-R_{\tau}si+i \right)
+\end{equation}
+
+Apply equation 1 $x_i = s$
+
+\begin{equation}
+\dot{\lambda}_s = R_{\tau} i (1 + \lambda_s-\lambda_i)
+\end{equation}
+
+Apply equation 1 $x_i = i$:
+\begin{equation}
+\dot{\lambda}_i = R_{\tau}s(1+\lambda_s-\lambda_i)+\lambda_i
+\end{equation}
+
+Apply equation 1 $x_i = R_{\tau}$:
+
+\begin{equation}
+R_{\tau} = \frac{R_0c}{c+R_0si(1+\lambda_s-\lambda_i)}
+\end{equation}
+
+## Implementation
+
+```{r}
+oneComparmentSIRmyopic <- function(x, y, parms) {
+
+    with(as.list(c(y, parms)),{
+        s <- y[1] 
+        i <- y[2] 
+       
+        
+        R_tau = R_0*c/(c+R_0*s*i)
+        
+        ds <- -R_tau *s *i
+        
+        di <- i * (R_tau*s-1)
+
+    return(list(c(ds,di)))
+    })
+}
+```
+
+
+
+
+Functions for solving boundary value problems include bvptwp, bvpcol,
+and bvpshoot
+
+```{r}
+#i0 <- 0.001
+#yini = c(1-i0,i0,NA,NA)
+#yend = c(NA,NA,0,0)
+#t <- seq(0,8,1/7) ## 112 days in steps of 2 days assuming 1/gamma=14 days
+
+#t.vec <- seq(8,64,1) # from 112 days  to just under 2.5 years of social distancing
+#c.vec <- seq(0.1,4.1,0.5)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+#R0.vec <-  seq(1.5,5,0.5)
+#i0.vec <- seq(1,51,5)*1e-4
+
+
+#t.vec <- 4^seq(2,5,1)/2 # from 112 days  to just under 2.5 years of social distancing
+#c.vec <- .25^seq(2,5,1)*2 # chosen such that  mean(c.vec%o%t.vec)~1
+#R0.vec <-  c(1.5,5)
+#i0.vec <- seq(1,51,10)*1e-4
+
+#t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
+#c.vec <-  seq(0.1,12.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+#R0.vec <-  c(1.5,5)
+#i0.vec <- seq(51,1,-10)*1e-3
+```
+
+```{r}
+sol.explore <- read.csv("INTERMEDIATE/sol.explore-step11.csv")
+exper.design <- read.csv("INTERMEDIATE/exper.design-step11.csv")
+```
+
+
+
+
+
+```{r}
+param.vec <- c("tFinal","c","R0","i0")
+exper.design.std <- exper.design
+params.scaled <- scale(exper.design[,param.vec])
+exper.design.std[,param.vec] <- params.scaled
+```
+
+```{r}
+dist.matrix <- dist(params.scaled,upper=TRUE)
+```
+
+```{r}
+dist.matrix <- as.matrix(dist.matrix)
+```
+
+```{r}
+exper.design.s <- exper.design[exper.design$twp.success==TRUE,]
+exper.design.u <- exper.design[exper.design$c %in% c(.025, 0.05, 0.1, 0.2, 0.4),]
+exper.design.std.s <- exper.design.std[exper.design$twp.success==TRUE,]
+exper.design.std.u <- exper.design.std[exper.design$twp.success==FALSE,]
+```
+
+```{r}
+exper.design$twp.success11 <- NA
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+print(Sys.time())
+for (case.run in exper.design.u$case.id){
+
+
+  
+   print(paste0("Case run is",case.run)) 
+   case.id <- exper.design$case.id[case.run]
+   tFinal <- exper.design$tFinal[case.run]
+   c <- exper.design$c[case.run]
+   R_0 <- exper.design$R0[case.run]
+   i0 <- exper.design$i0[case.run]
+    t <- seq(0,tFinal,1/7)
+    t.temp <- t
+    yini = c(1-i0,i0)
+    solved <- FALSE
+    
+    print(paste("tFinal of case is",tFinal))
+        print(paste("R0 is",R_0))
+        print(paste("c is",c))
+print(paste("c*tFinal is",tFinal*c))
+  same.c <- exper.design.s[exper.design.s$tFinal <= tFinal,]
+ # dists <- dist.matrix[same.c$case.id,case.run]
+#  cases <- names(sort(dists)[1:5])
+#  same.c <- subset(exper.design.s,case.id %in% cases)
+
+
+
+
+      t <- seq(0,tFinal,1/7)
+sol <- ode(y = yini,times = t,func = oneComparmentSIRmyopic,parms = list(R_0 = R_0,c=c))
+    
+
+
+solved <- TRUE    
+    if(solved==TRUE){
+      sol.explore <- subset(sol.explore,case.id!=case.run)
+    sol <- as.data.frame(sol)
+    sol <- sol[,1:3]
+    names(sol) <- c("x",as.character(1:2))
+    
+    sol <- as.data.frame(sol) %>% 
+    rename(tau=x,s='1',i='2') %>% 
+    mutate(R_tau = R_0*c/(c+R_0*s*i),
+           Rt= R_tau*s,
+           tFinal=tFinal,
+           case.id = case.id)
+    
+    sol.explore  <- bind_rows(sol.explore,sol)
+    }
+     }
+print(Sys.time())
+write.csv(sol.explore,"INTERMEDIATE/sol.explore-myopic.csv",row.names = FALSE)
+
+```
+

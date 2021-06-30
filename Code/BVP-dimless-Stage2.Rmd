@@ -183,7 +183,7 @@ for (case.run in exper.design.u$case.id){
     res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
                          func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax=4000),
                silent=TRUE)
-    exper.design[case.run,"twp.success"] <- !inherits(res,"try-error")
+    exper.design[which(exper.design$case.id ==case.run),"twp.success"] <- !inherits(res,"try-error")
 
     if(!inherits(res, "try-error")){
    solved <- TRUE

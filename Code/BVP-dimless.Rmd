@@ -127,30 +127,33 @@ R0.vec <-  seq(1.5,5,0.5)
 i0.vec <- seq(1,51,5)*1e-4
 
 
-t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
-c.vec <- seq(0.1,4.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+t.vec <- 4^seq(2,5,1)/2 # from 112 days  to just under 2.5 years of social distancing
+c.vec <- .25^seq(2,5,1)*2 # chosen such that  mean(c.vec%o%t.vec)~1
 R0.vec <-  c(1.5,5)
-i0.vec <- seq(1,51,50)*1e-4
+i0.vec <- seq(1,51,10)*1e-4
 
-t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
-c.vec <-  seq(0.1,4.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
-R0.vec <-  c(1.5,5)
-i0.vec <- seq(51,1,-50)*1e-3
+#t.vec <- seq(8,64,28) # from 112 days  to just under 2.5 years of social distancing
+#c.vec <-  seq(0.1,12.1,4)/64 # chosen such that  mean(c.vec%o%t.vec)~1
+#R0.vec <-  c(1.5,5)
+#i0.vec <- seq(51,1,-10)*1e-3
 
 exper.design <- expand.grid(tFinal = t.vec, c=c.vec, R0=R0.vec, i0= i0.vec) %>% 
   mutate(case.id=row_number())
 
 exper.design %>% 
-  mutate(prod=tFinal*c.vec) %>% 
+  mutate(prod=tFinal*c) %>% 
   filter(prod<1) 
 
 exper.design %>% 
-  mutate(prod=tFinal*c.vec) %>% 
+  mutate(prod=tFinal*c) %>% 
   filter(prod>1) 
+use.steps <- FALSE
 ```
-
+```{r}
+exper.design$shoot.success <- NA
+exper.design$twp.success <- NA
+```
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
-sol.explore <- NULL
 print(Sys.time())
 for (case.run in 1:nrow(exper.design)){
    
@@ -164,16 +167,22 @@ for (case.run in 1:nrow(exper.design)){
     t <- seq(0,tFinal,1/7)
     yini = c(1-i0,i0,NA,NA)
     
-    capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
-                                   func = oneComparmentSIR,maxiter = 200))
+    res1 <- try(capture.output(sol <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
+                                   func = oneComparmentSIR,maxiter = 200)))
     
+    print(paste("bvpshoot success",!inherits(res1,"try-error")))
+    exper.design[case.run,"shoot.success"] <- !inherits(res1,"try-error")
+
     # Here we try the two-point method. Note we silenced the error so if it doesn't converge
     # we use the shooting method solution. 
     res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
                          func = oneComparmentSIR,xguess = t,yguess = t(sol[,2:5])),
                silent=TRUE)
-    
-    if(inherits(res, "try-error")){
+    print(paste("bvptwp success",!inherits(res,"try-error")))
+    exper.design[case.run,"twp.success"] <- !inherits(res,"try-error")
+
+    if(inherits(res1,"try-error")|inherits(res, "try-error")){
+      if(use.steps){
     for(tEnd in (sol.prev$tFinal[1]+1):tFinal){
           # Populate the yguess in the two-point method in sol.prev
           t <- seq(0,tEnd,1/7)
@@ -185,8 +194,15 @@ for (case.run in 1:nrow(exper.design)){
           # Run the two point-method using the ygess.
           res <- try(sol <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
                              func = oneComparmentSIR,xguess = t,yguess = yguess))
-    }}
+    }} else{
+      for(col in 1:dim(sol)[2]){
+        print("setting to NA")
+       try(sol[,col] <- NA)}
+    }
+    }
+      
     sol <- as.data.frame(sol)
+    sol <- sol[,1:5]
     names(sol) <- c("x",as.character(1:4))
     
     sol <- as.data.frame(sol) %>% 
@@ -201,6 +217,9 @@ for (case.run in 1:nrow(exper.design)){
     sol.prev <- sol
 }
 print(Sys.time())
+write.csv(sol.explore,"INTERMEDIATE/sol.explore.csv")
+write.csv(exper.design,"INTERMEDIATE/exper.design.csv")
+
 ```
 
 ```{r}

@@ -74,6 +74,7 @@ Functions for solving boundary value problems include bvptwp, bvpcol, and bvpsho
 
 ```{r}
 I0 <- 30
+N <- 1000
 yini = c(N-I0,I0,NA,NA)
 yend = c(NA,NA,0,0)
 t <- seq(0,50,2)

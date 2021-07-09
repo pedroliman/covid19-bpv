@@ -13,7 +13,7 @@ load(packages)
 
 ### get the arguments
 args = commandArgs(TRUE)
-case.id <- args[1]
+case.id <- args[1]+args[2]
 
 oneComparmentSIR <- function(x, y, parms) {
 

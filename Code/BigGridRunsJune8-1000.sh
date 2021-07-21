@@ -44,7 +44,6 @@ spack load r-desolve@1.28
 spack load r-class@7.3-15
 spack load r-knitr@1.28
 spack load r-markdown@1.1
-spack load r-scales@1.0.0
 
 
 

@@ -7,7 +7,7 @@ load <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 } 
 
-packages <- c("knitr","rmarkdown","dplyr",
+packages <- c("knitr","dplyr",
               "ggplot2","bvpSolve","deSolve","class","pracma")
 load(packages)
 

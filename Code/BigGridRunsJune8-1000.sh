@@ -15,7 +15,7 @@
 # Notify me via email
 #SBATCH --mail-user=sarah.nowak@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --array [1-1000] ### Array index | %X number of simultaneous jobs
+#SBATCH --array [1-5] ### Array index | %X number of simultaneous jobs
 # 
 # change to the directory where you submitted this script
 cd /users/s/n/snowak/bpv-covid19/Code

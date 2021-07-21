@@ -18,7 +18,7 @@
 #SBATCH --array [1-1000] ### Array index | %X number of simultaneous jobs
 # 
 # change to the directory where you submitted this script
-cd /users/s/n/snowak/COVID-ABM
+cd /users/s/n/snowak/bpv-covid19/Code
 #
 # your job execution follows:
 echo "Starting sbatch script myscript.sh at:`date`"
@@ -38,7 +38,13 @@ spack load r-purrr@0.3.4
 spack load r-tibble@2.1.3
 spack load r-stringr@1.4.0
 spack load r-forcats@0.4.0
-
+spack load r-bvpsolve@1.4.2
+spack load r-pracma@2.2.9
+spack load r-desolve@1.28
+spack load r-class@7.3-15
+spack load r-knitr@1.28
+spack load r-markdown@1.1
+spack load r-scales@1.0.0
 
 
 

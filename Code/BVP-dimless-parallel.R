@@ -7,8 +7,8 @@ load <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 } 
 
-packages <- c("knitr","kableExtra","rmdformats","rmarkdown","dplyr","here","DiagrammeR",
-              "ggplot2","scales","ggthemes","bvpSolve","deSolve","class","pracma")
+packages <- c("knitr","rmarkdown","dplyr",
+              "ggplot2","scales","bvpSolve","deSolve","class","pracma")
 load(packages)
 
 ### get the arguments

@@ -43,7 +43,6 @@ spack load r-pracma@2.2.9
 spack load r-desolve@1.28
 spack load r-class@7.3-15
 spack load r-knitr@1.28
-spack load r-markdown@1.1
 
 
 

@@ -134,6 +134,12 @@ guess <- as.data.frame(guess)
      }
     print(solved)}
 print(Sys.time())
+sol$case.id <- case.id
+sol$R0 <- R_0
+sol$tFinal <- tFinal
+sol$c <- c
+sol$i0 <- i0
+sol$solved <- solved
 write.csv(sol,paste0("INTERMEDIATE/sol.explore.case-",case.id,".csv"),row.names = FALSE)
 write.csv(exper.design,paste0("INTERMEDIATE/exper.design.case-",case.id,".csv"),row.names = FALSE)
 

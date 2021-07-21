@@ -8,7 +8,7 @@ load <- function(pkg){
 } 
 
 packages <- c("knitr","rmarkdown","dplyr",
-              "ggplot2","scales","bvpSolve","deSolve","class","pracma")
+              "ggplot2","bvpSolve","deSolve","class","pracma")
 load(packages)
 
 ### get the arguments

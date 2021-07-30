@@ -64,7 +64,9 @@ d$tFinal <- factor(d$tFinal,levels = c(8,16, 32, 64, 128),labels = c("4","8","16
 
 ```{r,echo=FALSE,dpi=600}
 aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 &d$optimization == "full",]
+```
 
+```{r}
 aux$c[aux$c == 0.025] <- "Suppression"
 aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
 
@@ -74,7 +76,7 @@ aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
 x <- seq(0.01,1,.01)
 y <- -log(x)+x-1
 p <- as.data.frame(cbind(x,y))
-g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2*R0","0.4*R0","0.6*R0","0.8*R0","R0"))+xlab("RD")+ylab("Social Distaning Cost Per Unit Time")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "c", "2*c","3*c"))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
 g
 ```
 

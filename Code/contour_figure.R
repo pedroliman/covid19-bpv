@@ -8,17 +8,72 @@ library(fields)
 
 # Reading data from the Tableau folder:
 
-data = read.csv("./tableau/sol.explore-step6.csv") %>%
+# Reading all data:
+
+all_cases = read.csv("./Code/INTERMEDIATE/sol.explore.all.clean.csv")
+
+all_cases = all_cases %>% 
+  dplyr::filter(R0 %in% c(1.5,3,4.5))
+
+
+data = read.csv("./Code/INTERMEDIATE/sol.explore-step11.csv") %>%
   dplyr::select(tau, s, i, R_tau, Rt, case.id)
 
-exp_design = read.csv("./tableau/exper.design-step6.csv") %>%
+exp_design = read.csv("./Code/INTERMEDIATE/exper.design-step11.csv") %>%
   dplyr::select(case.id, c, R0, i0, tFinal)
 
 # Selecting data fror the contour plot:
-final_data = data %>%
-  dplyr::left_join(exp_design, by = "case.id") %>%
-  dplyr::filter(tFinal == tau, i0 == 0.0026) %>%
+final_data = all_cases %>%
+  #dplyr::left_join(exp_design, by = "case.id") %>%
+  dplyr::filter(tFinal == tau, tFinal < 200) %>%
   mutate(EpiSize = 1-s)
+
+
+final_data %>%
+  dplyr::filter(R0 == 4.5, tFinal > 25) %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, color = EpiSize)) +
+  geom_point() + 
+  facet_wrap(facets = ~R0)
+
+
+
+all_cases %>%
+  dplyr::filter(case.id == 1689) %>%
+  ggplot(data = ., mapping = aes(x = tau, y = s)) +
+  geom_line()
+
+
+
+
+## Myopic
+
+myopic_data = read.csv("./Code/INTERMEDIATE/sol.explore-myopic20210707.csv") %>%
+  dplyr::select(tau, s, i, R_tau, Rt, case.id)
+
+myopic_exp_design = read.csv("./Code/INTERMEDIATE/exper.design-round13.csv") %>%
+  dplyr::select(case.id, c, R0, i0, tFinal)
+
+# Selecting data fror the contour plot:
+myopic_final_data = myopic_data %>%
+  dplyr::left_join(myopic_exp_design, by = "case.id") %>%
+  dplyr::filter(tFinal == tau) %>%
+  mutate(EpiSize = 1-s)
+
+
+myopic_final_data %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, color = EpiSize)) +
+  geom_point() + 
+  facet_wrap(facets = ~R0)
+
+
+
+
+
+
+
+
+
+
 
 
 # Defining the Contour function
@@ -125,7 +180,7 @@ loess_countour_plot = function(results, x_variable = "tFinal",
   
 } 
 
-loess_plot = loess_countour_plot(results = final_data,facet_vector = c(2,3,4), binwidth = 0.2, skip = 0, nudge_y = 0.02) + 
+loess_plot = loess_countour_plot(results = final_data,facet_vector = c(2,3), binwidth = 0.2, skip = 0, nudge_y = 0.02) + 
   ylab("Perceived social distancing cost") + 
   xlab("Epidemic time-frame") + 
   hrbrthemes::theme_ipsum_ps(axis_title_just = "c") + 

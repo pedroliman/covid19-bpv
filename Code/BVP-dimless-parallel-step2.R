@@ -52,10 +52,10 @@ print(Sys.time())
         c.tried <- c()
         
   case.id <- exper.design.u$case.id[pos]
-   tFinal <- exper.design$tFinal[pos]
-   c <- exper.design$c[pos]
-   R_0 <- exper.design$R0[pos]
-   i0 <- exper.design$i0[pos]
+   tFinal <- exper.design.u$tFinal[pos]
+   c <- exper.design.u$c[pos]
+   R_0 <- exper.design.u$R0[pos]
+   i0 <- exper.design.u$i0[pos]
     t <- seq(0,tFinal,1/7)
     t.temp <- t
     yini = c(1-i0,i0,NA,NA)
@@ -63,7 +63,7 @@ print(Sys.time())
     solved <- FALSE
     
  
-  same.c <- exper.design.s[exper.design.s$tFinal <= tFinal&exper.design.s$R0==R_0,]
+  same.c <- exper.design.s[exper.design.s$tFinal <= tFinal,]
  # dists <- dist.matrix[same.c$case.id,case.run]
 #  cases <- names(sort(dists)[1:5])
 #  same.c <- subset(exper.design.s,case.id %in% cases)

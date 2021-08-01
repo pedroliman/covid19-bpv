@@ -114,7 +114,6 @@ guess <- as.data.frame(guess)
     }
           
     if(solved==TRUE){
-      sol.explore <- subset(sol.explore,case.id!=case.run)
     sol <- as.data.frame(sol)
     sol <- sol[,1:5]
     names(sol) <- c("x",as.character(1:4))

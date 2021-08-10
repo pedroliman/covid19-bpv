@@ -49,7 +49,7 @@ case.id.p <- unique(sol.explore.p$case.id)
 exper.design <- read.csv("INTERMEDIATE/exper.design-round13.csv")
 exper.design$bvp.success[which(exper.design$case.id %in% case.id.p)] <- TRUE
 exper.design.s <- subset(exper.design,bvp.success==TRUE)
-exper.design.u <- subset(exper.design,R0 == 3 & i0 == 1e-4 & case.id>417)
+exper.design.u <- subset(exper.design,R0 == 3 & case.id>417)
 print(Sys.time())
         c.tried <- c()
         
@@ -94,7 +94,7 @@ guess <- as.data.frame(guess)
         guess[(dim(guess)[1]+1):length(t),]<- guess[dim(guess)[1],]
       }
     res <- try(guess <- bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0,c=c),
-                         func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax = 7*tFinal),
+                         func = oneComparmentSIR,xguess = t,yguess = t(guess[,c("s","i","lambda_s","lambda_i")]),nmax = (7*tFinal+3)),
                silent=FALSE)
         t.temp <- guess[,1]
     print(length(t.temp))

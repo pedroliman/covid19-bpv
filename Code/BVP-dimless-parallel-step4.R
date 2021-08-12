@@ -12,9 +12,9 @@ packages <- c("knitr","dplyr",
 load(packages)
 
 ### get the arguments
-#args = commandArgs(TRUE)
-#pos <- as.numeric(args[1])+as.numeric(args[2])
-pos <- 1
+args = commandArgs(TRUE)
+pos <- as.numeric(args[1])+as.numeric(args[2])
+
 oneComparmentSIR <- function(x, y, parms) {
 
     with(as.list(c(y, parms)),{

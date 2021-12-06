@@ -59,7 +59,7 @@ S1.5max <- 1/1.5
 S2.5max <- 2.5
 S5max <- 5
 d$months <- d$tau/2
-d$tFinal <- factor(d$tFinal,levels = c(8,16, 32, 64, 128),labels = c("4","8","16","32","64"))
+d$tFinal <- factor(d$tFinal,levels = c(8,16, 32, 64, 128))
 ```
 
 ```{r,echo=FALSE,dpi=600}
@@ -82,25 +82,38 @@ g
 
 ```{r,echo=FALSE,dpi=600}
 aux$c[aux$c == 0.025] <- "Suppression"
-aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+aux$c[aux$c == 0.4] <- "Mitigation"
 
 require(tidyr)
 aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 &d$optimization == "full",]
 aux$c[aux$c == 0.025] <- "Suppression"
-aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+aux$c[aux$c == 0.4] <- "Mitigation"
 aux.long <- gather(aux,key="key",value = "value",c("i","s","R_tau","Rt","RD"))
 
-g <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")
+g <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+theme_bw()+xlab("Scaled Time")+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")
 
 g
+```
+
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup.png",height = 3,width=4,units = "in",res = 600)
+g
+dev.off()
+
 ```
 
 ```{r,echo=FALSE,dpi=600}
 
 require(tidyr)
-g <- ggplot(aux.long[aux.long$key %in% c("RD","Rt"),], aes(x = tau,y = value,linetype = key))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+scale_y_continuous(limits = c(0,1.5))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=1,linetype="dashed",color="red")
+g <- ggplot(aux.long[aux.long$key %in% c("RD","Rt"),], aes(x = tau,y = value,linetype = key))+geom_line()+theme_bw()+xlab("Scaled Time")+scale_y_continuous(limits = c(0,1.5))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=1,linetype="dashed",color="red")
 
 g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup_policy.png",height = 3,width=4,units = "in",res = 600)
+g
+dev.off()
+
 ```
 
 
@@ -112,12 +125,7 @@ g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025) & d$optimization == "ful
 g
 ```
 
-```{r,echo=FALSE,dpi=600}
-d$Rrel <- d$R_tau/d$R0
-g <- ggplot(d[d$i0 %in% c(0.0001,0.0051)&d$c%in% c(0.025)&d$R0 %in% c(1.5)&d$optimization=="full",], aes(x = tau,y = Rrel,linetype = as.factor(i0),color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")+scale_linetype(name = "i0")
 
-g
-```
 
 ```{r,echo=FALSE,dpi=600}
 d$Rrel <- d$R_tau/d$R0
@@ -159,7 +167,7 @@ g
 
 ```{r,echo=FALSE,dpi=600}
 d$Rrel <- d$R_tau/d$R0
-g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128))+xlab("Scaled Time")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
 g
 ```
 

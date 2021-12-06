@@ -1,0 +1,602 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+```
+
+```{r,echo=FALSE}
+d <- read.csv("INTERMEDIATE/sol.explore-step12.csv")
+dm <- read.csv("INTERMEDIATE/sol.explore-myopic.csv")
+e <- read.csv("INTERMEDIATE/exper.design-step11.csv")
+```
+
+```{r,echo=FALSE}
+row.names(e) <- e$case.id
+d$R0 <- e[d$case.id,"R0"]
+d$tFinal <- e[d$case.id,"tFinal"]
+d$i0 <- e[d$case.id,"i0"]
+d$c <- e[d$case.id,"c"]
+d$twp.success <- e[d$case.id,"twp.success"]
+
+d$optimization <- "full"
+dm$optimization <- "myopic"
+dm$twp.success <- NA
+dm$R0 <- e[dm$case.id,"R0"]
+dm$tFinal <- e[dm$case.id,"tFinal"]
+dm$i0 <- e[dm$case.id,"i0"]
+dm$c <- e[dm$case.id,"c"]
+d <- rbind(d,dm)
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d <- subset(d,c %in% c(0.025, 0.05, 0.1, 0.2, 0.4))
+d$RD <- d$R_tau
+```
+
+```{r,echo=FALSE}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$tFinal == 8&d$optimization == "full",], aes(x = tau,y = Rrel,color = as.factor(c),group = c))+geom_line()+facet_grid(i0~R0)+scale_color_viridis(end = 0.75,discrete = TRUE)
+g
+```
+```{r}
+f1.5 <- function(x,R0){exp(-1.5*(1-x))-x}
+f2.5 <- function(x,R0){exp(-2.5*(1-x))-x}
+f5 <- function(x,R0){exp(-5*(1-x))-x}
+```
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f1.5,start = .5,nspec= 1)[["root"]]
+Sinf2.5 <- multiroot.1D(f=f2.5,start = .5,nspec= 1)[["root"]]
+Sinf5 <- multiroot.1D(f=f5,start = .5,nspec= 1)[["root"]]
+
+S1.5max <- 1/1.5
+S2.5max <- 2.5
+S5max <- 5
+d$months <- d$tau/2
+d$tFinal <- factor(d$tFinal,levels = c(8,16, 32, 64, 128))
+```
+
+```{r,echo=FALSE,dpi=600}
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 &d$optimization == "full",]
+```
+
+```{r}
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+
+require(tidyr)
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+x <- seq(0.01,1,.01)
+y <- -log(x)+x-1
+p <- as.data.frame(cbind(x,y))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation"
+
+require(tidyr)
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 &d$optimization == "full",]
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation"
+aux.long <- gather(aux,key="key",value = "value",c("i","s","R_tau","Rt","RD"))
+
+ann_text <- data.frame(tau=c(45,40),value = c(S1.5max,Sinf1.5),label=c("Max Suceptibles\n for Herd Immunity","Suceptibles Remaining in \n an Uncontrolled Epidemic"),key=c("s","s"),c=c("Mitigation","Mitigation"))
+
+g <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("Proportion of Population")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")+scale_linetype(name="",labels=list(TeX(r'($i$)'),TeX(r'($s$)')))+geom_label(data=ann_text,aes(label=label),size=2.2,label.size = .1,label.padding=unit(.1,"lines"),label.r = unit(.1,"lines"))+theme(legend.position = "bottom")
+
+#+annotate("label",x=40,y=Sinf1.5,label="Suceptibles Remaining in \n an Uncontrolled Epidemic")+annotate("label",x=50,y=S1.5max,c="Mitigation",label="Max Suceptibles\n for Herd Immunity")
+
+
+g
+```
+
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup.png",height = 3,width=4,units = "in",res = 600)
+g
+dev.off()
+
+```
+
+```{r,echo=FALSE,dpi=600}
+
+require(tidyr)
+g <- ggplot(aux.long[aux.long$key %in% c("RD","Rt"),], aes(x = tau,y = value,linetype = key))+geom_line()+theme_bw()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1.5))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=1,linetype="dashed",color="red")+scale_linetype_discrete(name="",breaks=c("RD","Rt"),labels=list(TeX(r'($R_D$)'),TeX(r'($R_{\tau}$)')))+theme(legend.position = "bottom")+ylab("Reproduction Number")
+
+g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup_policy.png",height = 3,width=4,units = "in",res = 600)
+g
+dev.off()
+
+```
+
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025) & d$optimization == "full",], aes(x = tau,y = Rrel,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")
+
+g
+```
+
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$i0 %in% c(0.0001,0.0051)&d$c%in% c(0.025)&d$R0 %in% c(1.5)&d$optimization=="myopic",], aes(x = tau,y = Rrel,linetype = as.factor(i0),color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")+scale_linetype(name = "i0")
+
+g
+```
+
+
+# R_D/R_0, Social Distancing Over Time
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025)&d$optimization=="full",], aes(x = tau,y = Rrel,linetype = as.factor(i0),color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")
+
+g
+```
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05)&d$optimization=="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4)],aesthetics = "color",name="c")
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1)&d$optimization=="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3)],aesthetics = "color",name="c")
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2)&d$optimization == "full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2)],aesthetics = "color",name="c")
+g
+```
+
+# RD, R0 = 1.5
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = RD,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64,128))
+g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/ChangeTFinal.png",height = 5,width=6,units = "in",res = 600)
+g
+dev.off()
+
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="myopic",], aes(x = tau,y = RD,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64,128))
+g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/ChangeTFinal_myopic.png",height = 5,width=6,units = "in",res = 600)
+g
+dev.off()
+
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="myopic",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 2.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization =="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 2.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&((d$c == 0.025 & d$tFinal == "64")|(d$c == 0.05 & d$tFinal == "32"))&d$optimization =="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("RD/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+
+
+# RD, R0 = 5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = Rrel,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R/R0")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+
+# Infected, R0 = 1.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025),], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.05))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")
+g
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025)&d$optimization=="full",], aes(x = tau,y = Rt,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R_effective")+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")+geom_hline(yintercept=1,linetype="dashed",color="red")
+
+g
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05)&d$optimization=="full",], aes(x = tau,y = Rt,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R_effective")+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4)],aesthetics = "color",name="c")+geom_hline(yintercept=1,linetype="dashed",color="red")
+
+g
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,0.1)&d$optimization=="full",], aes(x = tau,y = Rt,linetype = as.factor(i0),color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R_effective")+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3)],aesthetics = "color",name="c")+geom_hline(yintercept=1,linetype="dashed",color="red")
+
+g
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,0.1,.2)&d$optimization=="full",], aes(x = tau,y = Rt,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R_effective")+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2)],aesthetics = "color",name="c")+geom_hline(yintercept=1,linetype="dashed",color="red")
+
+g
+```
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,0.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = Rt,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("R_effective")+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=1,linetype="dashed",color="red")
+
+g
+```
+# Infected, R0 = 1.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05),], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.05))+scale_fill_manual(values=viridis(6)[c(5,4)],aesthetics = "color",name="c")
+g
+```
+
+# Infected, R0 = 1.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1)&d$optimization=="full",], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.05))+scale_fill_manual(values=viridis(6)[c(5,4,3)],aesthetics = "color",name="c")
+g
+```
+# Infected, R0 = 1.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2)&d$optimization=="full",], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.05))+scale_fill_manual(values=viridis(6)[c(5,4,3,2)],aesthetics = "color",name="c")
+g
+```
+
+# Infected, R0 = 1.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.05))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+# Infected, R0 = 2.5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 2.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4),], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.2))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+# Infected, R0 = 5
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4),], aes(x = tau,y = i,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Infected")+scale_y_continuous(limits = c(0,.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")
+g
+```
+
+# Susceptibles Different Time Horizons
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5)],aesthetics = "color",name="c")
+g
+```
+
+# Susceptibles Different Time Horizons
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4)],aesthetics = "color",name="c")
+g
+```
+
+# Susceptibles Different Time Horizons
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3)],aesthetics = "color",name="c")
+g
+```
+
+# Susceptibles Different Time Horizons
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2)],aesthetics = "color",name="c")
+g
+```
+
+
+
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f1.5,start = .5,nspec= 1)[["root"]]
+Sinf2.5 <- multiroot.1D(f=f2.5,start = .5,nspec= 1)[["root"]]
+Sinf5 <- multiroot.1D(f=f5,start = .5,nspec= 1)[["root"]]
+
+S1.5max <- 1/1.5
+S2.5max <- 1/2.5
+S5max <- 1/5
+```
+# Susceptibles, R0 = 1.5
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="myopic",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")
+g
+```
+
+# Susceptibles, R0 = 2.5
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 2.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=Sinf2.5,linetype="dashed",color="red")+geom_hline(yintercept=S2.5max,linetype="dashed",color="red")
+g
+```
+
+# Susceptibles, R0 = 2.5
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 2.5&d$i0==0.0001&((d$c == 0.025 & d$tFinal == "64")|(d$c == 0.05 & d$tFinal == "32"))&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=Sinf2.5,linetype="dashed",color="red")+geom_hline(yintercept=S2.5max,linetype="dashed",color="red")
+g
+```
+
+
+# Susceptibles, R0 = 5
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R0 == 5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$optimization=="full",], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(.~tFinal,scales="free_x",space="free")+theme_bw()+scale_x_continuous(breaks = c(8,16,32,64,128),labels = c("4","8","16","32","64"))+xlab("Time (in Months)")+ylab("Proportion Susceptible")+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+geom_hline(yintercept=Sinf5,linetype="dashed",color="red")+geom_hline(yintercept=S5max,linetype="dashed",color="red")
+g
+```
+```{r}
+
+fR0 <- function(x,R0){exp(-R0*(1-x))-x}
+
+
+Sinf1.5 <- multiroot.1D(f=fR0,R0=1.5,start = .5,nspec= 1)[["root"]]
+Sinf3 <- multiroot.1D(f=fR0,R0=3,start = .5,nspec= 1)[["root"]]
+Sinf4.5 <- multiroot.1D(f=fR0,R0=4.5,start = .5,nspec= 1)[["root"]]
+Sinf6 <- multiroot.1D(f=fR0,R0=6,start = .5,nspec= 1)[["root"]]
+
+
+S1.5max <- 1/1.5
+S3max <- 1/3
+S4.5max <- 1/4.5
+S6max <- 1/6
+
+epi.size <- cbind(R0 = c(1.5,3,4.5,6),EpiInf = c(1-Sinf1.5,1-Sinf3,1-Sinf4.5,1-Sinf6),EpiMin = c(1-S1.5max,1-S3max,1-S4.5max,1-S6max))
+
+all_cases = read.csv("INTERMEDIATE/sol.explore.all.csv")
+all_cases2 <- read.csv("INTERMEDIATE/parallel.output2.csv")
+all_cases3 <- read.csv("INTERMEDIATE/parallel.output3.csv")
+all_casesR03 <- read.csv("INTERMEDIATE/output-R03.csv")
+all_casesR045 <- read.csv("INTERMEDIATE/output-R045.csv")
+
+all_cases4 <- rbind(all_cases,all_cases2,all_cases3)
+all_cases4 <-  subset(all_cases4,solved==TRUE&R0!=3&R0!=4.5)
+all_cases4 <- rbind(all_cases4,all_casesR03[,1:dim(all_cases4)[2]],all_casesR045[,1:dim(all_cases4)[2]])
+
+#all_cases = all_cases %>% 
+#  dplyr::filter(R0 %in% c(1.5,3,4.5))
+
+
+#data = read.csv("./Code/INTERMEDIATE/sol.explore-step11.csv") %>%
+#  dplyr::select(tau, s, i, R_tau, Rt, case.id)
+
+#exp_design = read.csv("./Code/INTERMEDIATE/exper.design-step11.csv") %>%
+#  dplyr::select(case.id, c, R0, i0, tFinal)
+
+# Selecting data fror the contour plot:
+
+
+
+
+## Myopic
+
+myopic_data = read.csv("INTERMEDIATE/sol.explore-myopic20210730.csv") %>%
+  dplyr::select(tau, s, i, R_tau, Rt, case.id)
+
+myopic_exp_design = read.csv("INTERMEDIATE/exper.design-round13.csv") %>%
+  dplyr::select(case.id, c, R0, i0, tFinal)
+
+myopic_data <- left_join(myopic_data,myopic_exp_design)
+
+# Selecting data fror the contour plot:
+myopic_final_data = myopic_data %>%
+  dplyr::filter(tFinal == tau&case.id>417) %>%
+  mutate(EpiSize = 1-s) 
+
+
+g <- myopic_final_data %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() + scale_fill_viridis_c()+
+  facet_wrap(facets = ~R0)
+
+g
+
+ggsave(filename = "FIGS/myopic_tile_plot.png",device = "png", plot = g, width = 3, height = 2.5, units = "in", scale = 2.5)
+
+g2 <-  all_cases4 %>%
+  dplyr::filter(tFinal == tau, case.id > 417) %>%
+  mutate(EpiSize = 1-s) %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() + scale_fill_viridis_c()+
+  facet_grid(i0 ~R0)
+
+ggsave(filename = "FIGS/tile_plot.png",device = "png", plot = g2, width = 3, height = 2.5, units = "in", scale = 2.5)
+
+g3 <-  all_cases4 %>%
+  dplyr::filter(tFinal == tau, case.id > 417, R0==1.5, i0 == 1e-4) %>%
+  mutate(EpiSize = 1-s) %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() + scale_fill_viridis_c()
+ggsave(filename = "tile_plot_1pt5.png",device = "png", plot = g3, width = 3, height = 2.5, units = "in", scale = 2.5)
+
+
+aux <- subset(all_cases4,R0 == 6 & c == 0.1 & i0 ==0.005)
+
+g3 <- aux %>% ggplot(data = .,mapping = aes(x = tau, y = s,group = tFinal,color = tFinal)) + scale_colour_viridis_c()+
+  geom_point()
+
+ggsave(filename = "problems.png",device = "png", plot = g3, width = 3, height = 2.5, units = "in", scale = 2.5)
+
+
+# Defining the Contour function
+
+loess_countour_plot = function(results, x_variable = "tFinal",
+                               y_variable = "c",
+                               dependent_variable = "EpiSize",
+                               facet_variable = "R0",
+                               facet_vector = c(2, 4),
+                               binwidth = 100,
+                               nudge_y = 0,
+                               nudge_x = 0,
+                               skip = 0) {
+  
+  
+  
+  if(is.null(facet_variable)) {
+    selected_results = results[,c(x_variable, y_variable, dependent_variable)]
+    names(selected_results) = c("x","y", "z")
+    loess_model = loess(z ~ x + y, data = selected_results)
+  } else {
+    selected_results = results[,c(x_variable, y_variable, facet_variable, dependent_variable)] 
+    names(selected_results) = c("x","y","facet", "z")
+    loess_model = loess(z ~ x + y + facet, data = selected_results)
+  }
+  
+  x_vector= seq.default(from = min(selected_results$x), to = max(selected_results$x), length.out = 100)
+  y_vector= seq.default(from = min(selected_results$y), to = max(selected_results$y), length.out = 100)
+  
+  
+  if(is.null(facet_variable)) {
+    meta_model_results <-  expand.grid(x_vector, y_vector)
+    names(meta_model_results) = c("x","y")
+    
+    mtrx3d =  predict(loess_model, meta_model_results)
+    
+    # Transform data to long form
+    mtrx.melt <- melt(mtrx3d, id.vars = c("x", "y"), measure.vars = "z")
+    names(mtrx.melt) <- c("x", "y", "z")
+    # Return data to numeric form
+    mtrx.melt$x <- as.numeric(str_sub(mtrx.melt$x, str_locate(mtrx.melt$x, "=")[1,1] + 1))
+    mtrx.melt$y <- as.numeric(str_sub(mtrx.melt$y, str_locate(mtrx.melt$y, "=")[1,1] + 1))
+    
+  } else {
+    meta_model_results <-  expand.grid(x_vector, y_vector, facet_vector)
+    names(meta_model_results) = c("x","y","facet")
+    mtrx3d =  predict(loess_model, meta_model_results)
+    
+    # Transform data to long form
+    mtrx.melt <- melt(mtrx3d, id.vars = c("x", "y", "facet"), measure.vars = "z")
+    names(mtrx.melt) <- c("x", "y", "facet", "z")
+    # Return data to numeric form
+    mtrx.melt$x <- as.numeric(str_sub(mtrx.melt$x, str_locate(mtrx.melt$x, "=")[1,1] + 1))
+    mtrx.melt$y <- as.numeric(str_sub(mtrx.melt$y, str_locate(mtrx.melt$y, "=")[1,1] + 1))
+    mtrx.melt$facet <- as.numeric(str_sub(mtrx.melt$facet, str_locate(mtrx.melt$facet, "=")[1,1] + 1))
+  }
+  
+  
+  # We should not find NAs in the mtrx.melt dataframe:
+  if(any(is.na(mtrx.melt))){
+    # Found NAs in the mtrx.melt data.frame. Check inputs.
+    browser()
+  }
+  
+  
+  ### Results from the metamodel:
+  
+  plot_function = function(data, facet_variable) {
+    
+    if(is.null(facet_variable)) {
+      names(data) = c("x","y","z")
+    } else {
+      names(data) = c("x","y",facet_variable, "z")
+    }
+    
+    plot <- ggplot(data, aes(x, y)) +
+      geom_tile(aes(fill=z)) + 
+      ggplot2::geom_contour(aes(z = z), color = "black",  binwidth = binwidth, size = 1)
+    
+    
+    if(!is.null(facet_variable)) {
+      plot = plot + facet_wrap(facets = facet_variable, labeller = label_both)
+    } 
+    
+    # computing breaks:
+    bins = (max(data$z) - min(data$z))/binwidth
+    breaks = pretty(x = data$z,n = bins)
+    
+    plot = plot +
+      scale_fill_gradientn(colours=tim.colors(128), breaks = breaks) + 
+      # Adjusts Contour text positions
+      metR::geom_text_contour(aes(z = z),show.legend = T,stroke.color = "white", binwidth = binwidth, skip = skip, nudge_y = nudge_y, nudge_x = nudge_x) + 
+      #hrbrthemes::theme_ipsum_ps(axis_title_just = "c") + 
+      ggpubr::theme_pubclean() + 
+      theme(legend.position="bottom") + 
+      theme(axis.title = element_text(face=1))
+    
+    plot
+    
+  }
+  
+  mtrx.melt %>%
+    plot_function(data = ., facet_variable = facet_variable)
+  
+} 
+
+loess_plot = loess_countour_plot(results = final_data,facet_vector = c(2,3), binwidth = 0.2, skip = 0, nudge_y = 0.02) + 
+  ylab("Perceived social distancing cost") + 
+  xlab("Epidemic time-frame") + 
+  hrbrthemes::theme_ipsum_ps(axis_title_just = "c") + 
+  theme(legend.position="bottom") + 
+  labs(fill = "Epidemic size") + 
+  theme(legend.key.width = unit(1, "in"))
+
+
+loess_plot
+
+ggsave(filename = "contour_plot.png",device = "png", plot = loess_plot, width = 3, height = 2.5, units = "in", scale = 2.5)
+
+
+
+```
+

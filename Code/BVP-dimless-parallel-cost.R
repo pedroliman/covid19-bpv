@@ -143,7 +143,6 @@ guess <- as.data.frame(guess)
         sol <- as.data.frame(sol)
         sol <- sol[,1:6]
         sol.cost <- round(tail(sol[,6],n=1),6)
-        unique.costs <- unique(c(unique.costs,sol.cost))
         names(sol) <- c("x",as.character(1:5))
         
         sol <- as.data.frame(sol) %>% 
@@ -164,10 +163,16 @@ guess <- as.data.frame(guess)
         } else {
           sol.explore2  <- bind_rows(sol.explore2,sol)
         } 
+        if(!(sol.cost %in% unique.costs)){
+          write.csv(sol,paste0("INTERMEDIATE/sol.exploreR0",R0.cases,"seed",case.id.c,".case-",case.id,".csv"),row.names = FALSE)
+          unique.costs <- unique(c(unique.costs,sol.cost))
+        }
       }
       
   }
-      
+
+   
+
  
 }
     
@@ -177,10 +182,4 @@ guess <- as.data.frame(guess)
 print(Sys.time())
 
 
-sol.explore2[,c("R_tau","Cost")] <- round(sol.explore2[,c("R_tau","Cost")],5)
-sol.explore2 <- sol.explore2[!duplicated(sol.explore2[,c("R_tau","Cost")]),]
-if(solved.count >= 1){
-
-write.csv(sol.explore2,paste0("INTERMEDIATE/sol.exploreR0",R0.cases,".case-",case.id,".csv"),row.names = FALSE)
-}
 

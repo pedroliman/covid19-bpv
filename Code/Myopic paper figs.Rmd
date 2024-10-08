@@ -1,0 +1,404 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+library(Bolstad2)
+require(arules)
+require(egg)
+require(gridExtra)
+require(scales)
+require(cowplot)
+require(stargazer)
+require(ggpubr)
+source("FUNCTIONS/CalculateCost.R")
+```
+
+```{r,echo=FALSE}
+dm <- read.csv("INTERMEDIATE/sol.explore-myopic.csv")
+e <- read.csv("INTERMEDIATE/exper.design-step11.csv")
+e <- e[,c("R0","case.id","c","i0")]
+dm <- merge(dm,e)
+```
+
+```{r}
+multR015 <- read.csv("INTERMEDIATE/multR015.csv")
+multR03 <- read.csv("INTERMEDIATE/multR03.csv")
+multR045 <- read.csv("INTERMEDIATE/multR045.csv")
+multR06 <- read.csv("INTERMEDIATE/multR06.csv")
+```
+
+
+
+```{r}
+d <- rbind(multR015,multR03,multR045,multR06)
+```
+
+```{r}
+d <- d %>%
+  mutate(finalEpi = 1-s, 
+         distCost = Cost-finalEpi,
+         scaledDistCost = distCost/c) 
+
+```
+
+```{r,echo=FALSE}
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d$RD <- d$R_tau
+```
+
+
+```{r}
+f <- function(x,R0){exp(-R0*(1-x))-x}
+```
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f,start = .5,nspec= 1,R0=1.5)[["root"]]
+
+S1.5max <- 1/1.5
+```
+
+```{r,echo=FALSE,dpi=600}
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 & d$is.min==TRUE,]
+```
+
+```{r}
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+
+require(tidyr)
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+x <- seq(0.01,1,.01)
+y <- -log(x)+x-1
+p <- as.data.frame(cbind(x,y))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+
+
+require(tidyr)
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.04,0.4) & d$tFinal == 64,]
+aux$c[aux$c == 0.04] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation"
+aux.long <- gather(aux,key="key",value = "value",c("i","s","R_tau","Rt","RD"))
+```
+
+```{r}
+ann_text <- data.frame(tau=c(45,40),value = c(S1.5max,Sinf1.5),label=c("Max Suceptibles\n for Herd Immunity","Suceptibles Remaining in \n an Uncontrolled Epidemic"),key=c("s","s"),c=c("Mitigation","Mitigation"))
+
+g1 <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("Proportion of Population")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")+scale_linetype(name="",labels=list(TeX(r'($i$)'),TeX(r'($s$)')))+geom_label(data=ann_text,aes(label=label),size=2.2,label.size = .1,label.padding=unit(.1,"lines"),label.r = unit(.1,"lines"))+theme(legend.position = "bottom")
+
+#+annotate("label",x=40,y=Sinf1.5,label="Suceptibles Remaining in \n an Uncontrolled Epidemic")+annotate("label",x=50,y=S1.5max,c="Mitigation",label="Max Suceptibles\n for Herd Immunity")
+
+
+g1
+```
+
+
+
+
+
+
+```{r,echo=FALSE,dpi=600}
+d2 <- d
+```
+
+```{r}
+d2$optimization <- "full"
+dm$optimization <- "myopic"
+```
+
+```{r}
+common.names <- intersect(names(d2),names(dm))
+```
+
+```{r}
+d2 <- subset(d2,is.min==TRUE)
+d <- rbind(d2[,common.names],dm[,common.names])
+```
+
+```{r}
+
+fR0 <- function(x,R0){exp(-R0*(1-x))-x}
+
+
+Sinf1.5 <- multiroot.1D(f=fR0,R0=1.5,start = .5,nspec= 1)[["root"]]
+Sinf3 <- multiroot.1D(f=fR0,R0=3,start = .5,nspec= 1)[["root"]]
+Sinf4.5 <- multiroot.1D(f=fR0,R0=4.5,start = .5,nspec= 1)[["root"]]
+Sinf6 <- multiroot.1D(f=fR0,R0=6,start = .5,nspec= 1)[["root"]]
+
+
+S1.5max <- 1/1.5
+S3max <- 1/3
+S4.5max <- 1/4.5
+S6max <- 1/6
+
+epi.size <- cbind(R0 = c(1.5,3,4.5,6),EpiInf = c(1-Sinf1.5,1-Sinf3,1-Sinf4.5,1-Sinf6),EpiMin = c(1-S1.5max,1-S3max,1-S4.5max,1-S6max))
+
+all_cases = read.csv("INTERMEDIATE/sol.explore.all.csv")
+all_cases2 <- read.csv("INTERMEDIATE/parallel.output2.csv")
+all_cases3 <- read.csv("INTERMEDIATE/parallel.output3.csv")
+all_casesR03 <- read.csv("INTERMEDIATE/output-R03.csv")
+all_casesR045 <- read.csv("INTERMEDIATE/output-R045.csv")
+
+all_cases4 <- d
+
+myopic_data = read.csv("INTERMEDIATE/sol.explore-myopic20210730.csv") %>%
+  dplyr::select(tau, s, i, R_tau, Rt, case.id)
+
+myopic_exp_design = read.csv("INTERMEDIATE/exper.design-round13.csv") %>%
+  dplyr::select(case.id, c, R0, i0, tFinal)
+
+myopic_data <- left_join(myopic_data,myopic_exp_design)
+myopic_data$optimization <- "myopic"
+common.names2 <- intersect(names(myopic_data),names(d))
+d<- rbind(d[,common.names2],myopic_data[,common.names2])
+```
+
+```{r}
+myopic_final_data = myopic_data %>%
+  dplyr::filter(tFinal == tau&case.id>417) %>%
+  mutate(EpiSize = 1-s) 
+```
+
+```{r}
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 %in% c(1.5,3,4.5)&d$i0==1e-04&d$c%in% c(0.05,.4)&d$tFinal %in% c(4,8,16,32,64),], aes(x = tau,y = R_tau,color=as.factor(c),linetype=as.factor(optimization)))+geom_line()+facet_grid(R0~tFinal,scales="free",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_x_continuous(breaks = c(8,16,32,64))+scale_fill_manual(values=viridis(6)[c(5,1)],aesthetics = "color",name="c")
+g
+```
+```{r}
+d$c2 <- paste("c =",d$c)
+d$R02 <- paste("R0 =",d$R0)
+
+```
+
+
+```{r}
+theme_set(theme_bw())
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R02 %in% c("R0 = 1.5","R0 = 3","R0 = 4.5")&d$i0==1e-04&d$c2%in% c("c = 0.05","c = 0.1","c = 0.2")&d$tFinal %in% c(60),], aes(x = tau,y = Rrel,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D/R_0$)'))
+g
+```
+```{r}
+theme_set(theme_bw())
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R02 %in% c("R0 = 1.5","R0 = 3","R0 = 4.5")&d$i0==1e-04&d$c2%in% c("c = 0.05","c = 0.1","c = 0.2")&d$tFinal %in% c(60),], aes(x = tau,y = Rrel,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D/R_0$)'))
+g
+```
+```{r}
+theme_set(theme_bw())
+d$Rrel <- d$R_tau/d$R0
+g <- ggplot(d[d$R02 %in% c("R0 = 1.5")&d$i0==1e-04&d$c2%in% c("c = 0.05")&d$tFinal %in% c(60),], aes(x = tau,y = Rrel,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D/R_0$)'))
+g
+```
+```{r}
+theme_set(theme_bw())
+
+gm1 <- ggplot(d[d$R02 %in% c("R0 = 1.5","R0 = 3","R0 = 4.5")&d$i0==1e-04&d$c2%in% c("c = 0.05","c = 0.1","c = 0.2")&d$tFinal %in% c(60),], aes(x = tau,y = Rrel,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D/R_0$)'))+labs(linetype="Optimization\ntype")+guides(linetype=FALSE)
+gm1
+```
+```{r}
+theme_set(theme_bw())
+
+gm1 <- ggplot(d[d$R02 %in% c("R0 = 1.5")&d$i0==1e-04&d$c2%in% c("c = 0.05")&d$tFinal %in% c(60),], aes(x = tau,y = Rrel,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D/R_0$)'))+labs(linetype="Optimization\ntype")+guides(linetype=FALSE)
+gm1
+```
+
+```{r}
+theme_set(theme_bw())
+d$min.hi <- 1/d$R0
+gm2 <- ggplot(d[d$R0 %in% c(1.5,3,4.5)&d$i0==1e-04&d$c%in% c(0.05,.1,.2)&d$tFinal %in% c(60),], aes(x = tau,y = s,linetype=as.factor(optimization)))+geom_line(show.legend = FALSE)+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($s$)'))+
+  geom_abline(aes(intercept=min.hi,slope=0),show.legend=TRUE,name="Max s\nfor herd\nimmunity",linetype=4,color="red")+labs(linetype="Max s\nfor herd\nimmunity")+guides(linetype=FALSE,color=TRUE)
+gm2
+```
+```{r}
+theme_set(theme_bw())
+d$min.hi <- 1/d$R0
+gm2 <- ggplot(d[d$R0 %in% c(1.5)&d$i0==1e-04&d$c%in% c(0.05)&d$tFinal %in% c(60),], aes(x = tau,y = s,linetype=as.factor(optimization)))+geom_line(show.legend = FALSE)+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($s$)'))+
+  geom_abline(aes(intercept=min.hi,slope=0),show.legend=TRUE,name="Max s\nfor herd\nimmunity",linetype=4,color="red")+labs(linetype="Max s\nfor herd\nimmunity")+guides(linetype=FALSE,color=TRUE)
+gm2
+```
+
+```{r}
+theme_set(theme_bw())
+
+gm3 <- ggplot(d[d$R02 %in% c("R0 = 1.5","R0 = 3","R0 = 4.5")&d$i0==1e-04&d$c2%in% c("c = 0.05","c = 0.1","c = 0.2")&d$tFinal %in% c(60),], aes(x = tau,y = i,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($i$)'))+labs(linetype="Optimization\ntype")
+
+
+
+# Print the plot
+gm3
+```
+```{r}
+theme_set(theme_bw())
+
+gm3 <- ggplot(d[d$R02 %in% c("R0 = 1.5")&d$i0==1e-04&d$c2%in% c("c = 0.05")&d$tFinal %in% c(60),], aes(x = tau,y = i,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($i$)'))+labs(linetype="Optimization\ntype")
+
+
+
+# Print the plot
+gm3
+```
+```{r,echo=FALSE}
+print(gm1)
+print(gm2)
+print(gm3)
+
+```
+<style>
+.slides > section > .columns-3 > .column {
+  width: 33.33%;
+}
+</style>
+```{r}
+d.weird <- d[d$R02 %in% c("R0 = 3")&d$i0==1e-04&d$c2%in% c("c = 0.05")&d$tFinal %in% c(60),]
+
+d.weird$prob.infect <- d.weird$i*d.weird$s*d.weird$R_tau
+d.weird$r <- 1-d.weird$s-d.weird$i
+```
+
+```{r}
+theme_set(theme_bw())
+
+gmA1 <- ggplot(d.weird, aes(x = tau,y = prob.infect,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab("Rate of new infections")+labs(linetype="Optimization\ntype")+guides(linetype=FALSE)
+gmA1
+```
+```{r}
+theme_set(theme_bw())
+
+gmA2 <- ggplot(d.weird, aes(x = tau,y = r,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($r$)'))+labs(linetype="Optimization\ntype")+guides(linetype=FALSE)+geom_abline(slope=0,intercept=.666666,color="red")
+gmA2
+```
+
+```{r}
+theme_set(theme_bw())
+
+gmA3 <- ggplot(d.weird, aes(x = tau,y = Rt,linetype=as.factor(optimization)))+geom_line()+facet_grid(R02~c2,space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($sR_D$)'))+labs(linetype="Optimization\ntype")+guides(linetype=FALSE)+geom_abline(slope=0,intercept=1,color="red")
+gmA3
+```
+
+
+
+```{r}
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 %in% c(1.5,3,4.5)&d$i0==1e-04&d$c%in% c(0.05,.4)&d$tFinal %in% c(4,8,16,32,64),], aes(x = tau,y = s,color=as.factor(c),linetype=as.factor(optimization)))+geom_line()+facet_grid(R0~tFinal,scales="free",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_x_continuous(breaks = c(8,16,32,64))+scale_fill_manual(values=viridis(6)[c(5,1)],aesthetics = "color",name="c")
+g
+```
+
+```{r}
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 %in% c(1.5,3,4.5)&d$i0==1e-04&d$c%in% c(0.05,.4)&d$tFinal %in% c(4,8,16,32,64),], aes(x = tau,y = s,color=as.factor(c),linetype=as.factor(optimization)))+geom_line()+facet_grid(R0~tFinal,scales="free",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_x_continuous(breaks = c(8,16,32,64))+scale_fill_manual(values=viridis(6)[c(5,1)],aesthetics = "color",name="c")
+g
+```
+
+
+```{r}
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 4.5&d$i0==1e-04&d$c%in% c(0.025,0.05,.1,.2,.4)&d$tFinal %in% c(4,8,16,32,64),], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(optimization~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64))
+g
+```
+
+```{r}
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 4.5&d$i0==1e-04&d$c%in% c(0.025,0.05,.1,.2,.4)&d$tFinal %in% c(4,8,16,32,64),], aes(x = tau,y = R_tau,group = c,color=as.factor(c)))+geom_line()+facet_grid(optimization~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_y_continuous(limits = c(0,4.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64))
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$tFinal!=8,], aes(x = tau,y = R_tau,group = c,color=as.factor(c)))+geom_line()+facet_grid(optimization~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($R_D$)'))+scale_y_continuous(limits = c(0,1.5))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64))
+g
+```
+
+
+
+
+```{r,echo=FALSE,dpi=600}
+d$Rrel <- d$R_tau/d$R0
+theme_set(theme_bw())
+g <- ggplot(d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.05,.1,.2,.4)&d$tFinal!=8,], aes(x = tau,y = s,group = c,color=as.factor(c)))+geom_line()+facet_grid(optimization~tFinal,scales="free_x",space="free")+theme(legend.position = "bottom")+xlab(TeX(r'($\tau$)'))+ylab(TeX(r'($s$)'))+scale_y_continuous(limits = c(0,1))+scale_fill_manual(values=viridis(6)[c(5,4,3,2,1)],aesthetics = "color",name="c")+scale_x_continuous(breaks = c(8,16,32,64))
+g
+```
+
+
+plot_grid(g.1a,g.1b,labels=c("(a)","(b)"),rel_widths = c(1,1.5))
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+g <- myopic_final_data %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() + facet_wrap(R0~.)+scale_fill_viridis_c(name="Final Epidemic Size")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")
+g
+```
+
+
+```{r}
+g2 <-  all_cases4 %>%
+  dplyr::filter(tFinal == tau, case.id > 417,i0==0.0001,R0==1.5) %>%
+  mutate(EpiSize = 1-s) %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() +geom_blank(data=myopic_final_data)+ scale_fill_viridis_c(name="Final Epidemic Size")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")
+g2
+```
+
+
+#Total Cost
+```{r}
+myopic_data1.5 = myopic_data %>%
+  dplyr::filter(case.id>417&R0==1.5&i0==0.0001) %>%
+  mutate(EpiSize = 1-s) 
+```
+
+```{r}
+myopic_cost1.5 <- CalculateCost(myopic_data1.5)
+```
+
+```{r}
+myopic_cost <- CalculateCost(myopic_data)
+myopic_cost <- myopic_cost[myopic_cost$case.id>417&myopic_cost$i0==0.0001,]
+```
+
+```{r}
+write.csv(myopic_cost,file="INTERMEDIATE/myopic_with_cost.csv")
+
+```
+
+```{r}
+g <-  ggplot(myopic_cost[myopic_cost$tFinal<100&myopic_cost$case.id>417&myopic_cost$i0==0.0001,], mapping = aes(x = tFinal, y = c, fill = cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+
+```
+
+```{r}
+full_opt1.5 <- all_cases4 %>%
+  dplyr::filter(case.id > 417,i0==0.0001,R0==1.5)
+```
+

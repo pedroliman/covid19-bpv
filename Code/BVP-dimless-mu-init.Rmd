@@ -1,0 +1,163 @@
+
+# Needed packages to perform the analysis
+```{r}
+load <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+} 
+
+packages <- c("knitr","dplyr",
+              "ggplot2","bvpSolve","deSolve","class","pracma","tidyr")
+load(packages)
+```
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r}
+### get the arguments
+args = commandArgs(TRUE)
+pos <- as.numeric(args[1])+as.numeric(args[2])
+R0.cases <- args[3]
+if(is.na(pos)){
+  pos <- 1
+  R0.cases <- 6
+}
+```
+        
+   
+```{r}
+oneComparmentSIRmu <- function(x, y, parms) {
+  
+  with(as.list(c(y, parms)),{
+    s <- y[1] 
+    i <- y[2] 
+    mu_s <- y[3]
+    mu_i <- y[4]
+    
+    R_tau = R_0/(1+R_0*s*i*(mu_s-mu_i))
+    
+    ds <- -R_tau *s *i
+    
+    di <- i * (R_tau*s-1)
+    
+    dmu_s <- R_tau*i*(mu_s-mu_i)
+    
+    dmu_i <- R_tau*s*(1+mu_s-mu_i)+mu_i
+    
+    dCost <- (-log(R_tau/R_0)+R_tau/R_0-1)
+    
+    return(list(c(ds,di,dmu_s,dmu_i,dCost)))
+  })
+}
+```
+
+
+
+```{r}
+exper.design <- read.csv("INTERMEDIATE/exper.design.mu.csv")
+
+neighbors <- exper.design %>%
+  pivot_longer(cols = starts_with("neighbor_"),
+               names_to = "name",
+               values_to = "neighbor_num") 
+neighbors$neighbor_solved <- FALSE
+```
+
+```{r}
+    solved.count <- 0
+```
+```{r}
+for(pos in 1:dim(exper.design)[1]){
+print(Sys.time())
+        c.tried <- c()
+        
+  case.id <- exper.design$case.id.mu[pos]
+  print(case.id)
+   tFinal <- exper.design$tFinal[pos]
+   # c needs to become s (select s final from exper.design)
+   sFinal <- exper.design$sFinal[pos]
+   R_0 <- exper.design$R0[pos]
+   i0 <- exper.design$i0[pos]
+    t <- seq(0,tFinal,.2)
+    t.temp <- t
+    
+    #s <- y[1] 
+    #i <- y[2] 
+    #mu_s <- y[3]
+    #mu_i <- y[4]
+    yini = c(1-i0,i0,NA,NA,0)
+    yend = c(sFinal,NA,NA,0,NA)
+    solved <- FALSE
+
+
+  unique.costs <- c()
+ 
+    solved <- FALSE
+
+
+    res <- try(guess <- bvpshoot(yini = yini,yend=yend,x=t,parms = list(R_0 = R_0),
+                         func = oneComparmentSIRmu),
+               silent=TRUE)
+  
+    if(!inherits(res, "try-error")){
+      print("validating")
+    res <- try(bvptwp(yini = yini,yend=yend,x=t,parms = list(R_0=R_0),func = oneComparmentSIRmu,
+              xguess = guess[,1],yguess = t(guess[,2:6]),nmax=length(t)*5))
+    }
+      solved <- !inherits(res, "try-error")
+      print(solved)
+      if(solved==TRUE){
+        print(solved.count)
+        solved.count <- solved.count +1
+        sol <- as.data.frame(res)
+        sol <- sol[,1:6]
+         sol <- sol[!duplicated(sol),]
+        sol.cost <- round(tail(sol[,6],n=1),6)
+        names(sol) <- c("x",as.character(1:5))
+        
+        sol <- as.data.frame(sol) %>% 
+          rename(tau=x,s='1',i='2',mu_s='3',mu_i='4',Cost='5') %>% 
+          mutate(R_tau = R_0/(1+R_0*s*i*(mu_s-mu_i)),
+                 Rt= R_tau*s,
+                 tFinal=tFinal,
+                 case.id = case.id)
+            sol <- subset(sol,tau %in% t)
+        sol$case.id <- case.id
+        sol$R0 <- R_0
+        sol$tFinal <- tFinal
+        sol$sFinal <- sFinal
+        sol$i0 <- i0
+        sol$solved <- solved
+        exper.design[pos,"solved"] <- TRUE
+        neighbors[which(neighbors$neighbor_num==case.id),"neighbor_solved"] <- TRUE
+        neighbors[which(neighbors$case.id.mu==case.id),"solved"] <- TRUE
+        
+        if(solved.count == 1){
+          sol.explore2 <- sol
+        } else {
+          sol.explore2  <- bind_rows(sol.explore2,sol)
+        }
+      }
+ 
+    
+          
+
+    print(solved)
+print(Sys.time())
+
+}
+
+
+write.csv(sol.explore2,"INTERMEDIATE/mu.solutions.csv",row.names=FALSE)
+write.csv(exper.design,"INTERMEDIATE/exper.design.mu0.csv",row.names=FALSE)
+write.csv(neighbors,"INTERMEDIATE/mu.neighbors0.csv",row.names=FALSE)
+iter.num <- 0
+save(iter.num,file="iter.num.Rdata")
+source("BVP-dimless-mu-test.R")
+```
+
+

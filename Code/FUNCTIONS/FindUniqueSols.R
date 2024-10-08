@@ -1,10 +1,10 @@
-FindUniqueSols <- function(mult,costs){
+FindUniqueSols <- function(mult){
   
+  costs <- subset(mult, tau == tFinal)
 
-  costs$cost <- round(as.numeric(costs$cost),digits=4)
-  costs$cost2 <- round(as.numeric(costs$cost2),digits=4)
-  
-dup <- duplicated(costs[,c("cost","cost2","R0","c","i0","tFinal")])
+  costs$Cost <- round(as.numeric(costs$Cost),digits=4)
+
+dup <- duplicated(costs[,c("Cost","R0","c","i0","tFinal")])
 
 costs2 <- costs[!dup,]
 
@@ -16,7 +16,7 @@ findMin <- function(x){
   if(dim(x)[1]==1){
     return(x)
   } else {
-    min <- which(x$cost2==min(x$cost2))
+    min <- which(x$Cost==min(x$Cost))
    return(x[min,])
   }
 }

@@ -1,0 +1,353 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+require(ggrepel)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+library(Bolstad2)
+library(ggh4x)
+library(ggpubr)
+library(gridExtra)
+library(grid)
+library(cowplot)
+source("FUNCTIONS/CalculateCost.R")
+```
+
+```{r,echo=FALSE}
+multR015 <- read.csv("INTERMEDIATE/multR015.csv")
+multR03 <- read.csv("INTERMEDIATE/multR03.csv")
+multR045 <- read.csv("INTERMEDIATE/multR045.csv")
+multR06 <- read.csv("INTERMEDIATE/multR06.csv")
+```
+
+```{r}
+d <- rbind(multR015,multR03,multR045,multR06)
+```
+
+```{r}
+d <- d %>%
+  mutate(finalEpi = 1-s, 
+         distCost = Cost-finalEpi,
+         scaledDistCost = distCost/c) 
+
+```
+
+```{r,echo=FALSE}
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d$RD <- d$R_tau
+```
+
+
+```{r}
+f <- function(x,R0){exp(-R0*(1-x))-x}
+```
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f,start = .5,nspec= 1,R0=1.5)[["root"]]
+
+S1.5max <- 1/1.5
+```
+
+```{r,echo=FALSE,dpi=600}
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 & d$is.min==TRUE,]
+```
+
+```{r}
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+
+require(tidyr)
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+x <- seq(0.01,1,.01)
+y <- -log(x)+x-1
+p <- as.data.frame(cbind(x,y))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+
+
+require(tidyr)
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.04,0.4) & d$tFinal == 64,]
+aux$c[aux$c == 0.04] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation"
+aux.long <- gather(aux,key="key",value = "value",c("i","s","R_tau","Rt","RD"))
+```
+
+```{r}
+ann_text <- data.frame(tau=c(45,40),value = c(S1.5max,Sinf1.5),label=c("Max Suceptibles\n for Herd Immunity","Suceptibles Remaining in \n an Uncontrolled Epidemic"),key=c("s","s"),c=c("Mitigation","Mitigation"))
+
+g1 <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("Proportion of Population")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")+scale_linetype(name="",labels=list(TeX(r'($i$)'),TeX(r'($s$)')))+geom_label(data=ann_text,aes(label=label),size=2.2,label.size = .1,label.padding=unit(.1,"lines"),label.r = unit(.1,"lines"))+theme(legend.position = "bottom")
+
+#+annotate("label",x=40,y=Sinf1.5,label="Suceptibles Remaining in \n an Uncontrolled Epidemic")+annotate("label",x=50,y=S1.5max,c="Mitigation",label="Max Suceptibles\n for Herd Immunity")
+
+
+g1
+```
+
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+
+```{r,echo=FALSE,dpi=600}
+
+require(tidyr)
+g2 <- ggplot(aux.long[aux.long$key %in% c("RD","Rt"),], aes(x = tau,y = value,linetype = key))+geom_line()+theme_bw()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1.5))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=1,linetype="dashed",color="red")+scale_linetype_discrete(name="",breaks=c("RD","Rt"),labels=list(TeX(r'($R_D$)'),TeX(r'($R_{\tau}$)')))+theme(legend.position = "bottom")+ylab("Reproduction Number")
+
+g2
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup_policy.png",height = 3,width=4,units = "in",res = 800)
+g2
+dev.off()
+
+```
+```{r}
+png("Figure1.png",width = 4, height = 6, units="in",res=600)
+plot_grid(g1,g2,labels=c("(a)","(b)"),ncol=1)
+dev.off()
+```
+
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec) %>%
+  mutate(lab="Initial Outbreak",lab2 = "R0") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=Cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_nested(lab+as.factor(i0)~lab2+as.factor(R0))
+g
+
+```
+
+```{r}
+tFinal.vec <- seq(12,80,by=4)
+g3 <-  d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec& R0 %in% c(1.5,3,4.5)) %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=finalEpi)) +
+  geom_tile() + scale_fill_viridis_c(name="Final\nEpidemic\nSize")+xlab(TeX(r'($\tau_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~ as.factor(i0))+facet_grid(as.factor(i0)~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(lab+as.factor(i0)~lab2+as.factor(R0))+theme(legend.position = "bottom")
+g3
+
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/FinalEpiSize.png",height = 3,width=4,units = "in",res = 800)
+g3
+dev.off()
+
+```
+```{r}
+d_cost <- d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec& R0 %in% c(1.5,3,4.5))
+```
+```{r}
+tFinal.vec <- seq(12,80,by=4)
+g4 <-  d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec& R0 %in% c(1.5,3,4.5)) %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=Cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Total\nCost",option="A")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~ as.factor(i0))+facet_grid(as.factor(i0)~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(lab+as.factor(i0)~lab2+as.factor(R0))+theme(legend.position = "bottom")
+g4
+
+```
+```{r}
+my_cost <- read.csv("INTERMEDIATE/sol.explore-myopic-delay.csv")
+my_cost$total.epi <- my_cost$s
+my_cost <- subset(my_cost,tau==tFinal)
+my_cost2 <- read.csv("INTERMEDIATE/myopic_with_cost.csv")
+col.names <- names(my_cost2)[names(my_cost2) %in% c(names(my_cost))]
+col.names <- c(col.names,"delay")
+my_cost <- my_cost[,col.names]
+my_cost$my_cost <- my_cost$cost
+my_cost$cost <- NULL
+my_cost$split.var <- NULL
+my_cost$X <- NULL
+my_cost$total.epi.myopic <- my_cost$total.epi
+my_cost$total.epi <- NULL
+my_cost$case.id <- NULL
+```
+
+```{r}
+write.csv(my_cost2,"INTERMEDIATE/compare.runs.csv")
+merged <- merge(my_cost,d_cost)
+merged$ratio <- merged$my_cost/merged$Cost
+merged$cost.diff <- merged$my_cost-merged$Cost
+
+dim(merged)
+```
+
+```{r}
+merged.long <- pivot_longer(merged,cols=c("finalEpi","total.epi.myopic"))
+merged.long$name[merged.long$name=="finalEpi"] <- "KTH Policy"
+merged.long$name[merged.long$name=="total.epi.myopic"] <- "Myopic\nPolicy"
+
+g2a <-  merged.long %>%
+  mutate(lab2="R0") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=value,z=value)) +
+  geom_tile() + scale_fill_viridis(name="Final\nEpidemic\nSize")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_nested(name~lab2+as.factor(R0))+ylab(TeX(r'($c$)'))+ggtitle("(a) Infection Cost\n(Final Epidemic Size)")
+g2a
+
+```
+```{r}
+library(colorspace)
+merged$epi.diff <- merged$total.epi.myopic-merged$finalEpi
+g2b <-  merged %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0",lab3 = "Delay") %>%
+  filter(delay %in% c(0,2,4)) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=epi.diff)) +
+  geom_tile() + 
+ scale_fill_continuous_divergingx(palette = 'PuOr', mid = 0,name="Infection\nCost\nDifference\n(Myopic-KTH)")+
+  xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(.~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(delay~lab2+as.factor(R0))+theme(legend.position = "right")+ggtitle("Infection Cost Difference")
+g2b
+
+```
+```{r}
+png("FIGS/Figure 2 delay.png",width=6,height=4,units='in',res=600)
+plot_grid(g2b,ncol=1,rel_heights = c(1,.8))
+dev.off()
+```
+```{r}
+merged$distCost_myopic <- merged$my_cost-merged$total.epi.myopic
+merged$distDiff <- merged$distCost_myopic-merged$distCost
+merged.long2 <- pivot_longer(merged,cols=c("distCost","distCost_myopic"))
+merged.long2$name[merged.long2$name=="distCost"] <- "KTH Policy"
+merged.long2$name[merged.long2$name=="distCost_myopic"] <- "Myopic\nPolicy"
+
+
+```
+```{r}
+library(colorspace)
+g3b <-  merged %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0",lab3 = "Delay") %>%
+  filter(delay %in% c(0,2,4)) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=distDiff)) +
+  geom_tile() + 
+ scale_fill_continuous_divergingx(palette = 'PuOr', mid = 0,name="Distancing\nCost\nDifference\n(Myopic-KTH)")+
+  xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(.~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(delay~lab2+as.factor(R0))+theme(legend.position = "right")+ggtitle("Distancing Cost Difference")
+g3b
+
+```
+```{r}
+png("FIGS/Figure 3 delay.png",width=6,height=4,units='in',res=600)
+plot_grid(g3b,ncol=1)
+dev.off()
+```
+
+
+```{r}
+g4b <-  merged %>%
+  filter(delay %in% c(0,2,4)) %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0",lab3 = "Delay") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=cost.diff)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost\nDifference\n(Myopic-KTH)",option="A")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(.~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(lab3+delay~lab2+as.factor(R0))+theme(legend.position = "right")+ggtitle("Cost Difference")
+g4b
+
+```
+
+```{r}
+png("FIGS/Figure 4 delay.png",width=6,height=4,units='in',res=600)
+plot_grid(g4b,ncol=1)
+dev.off()
+```
+
+
+
+
+```{r}
+g5 <-  merged %>%
+    mutate(lab="Initial Outbreak",lab2 = "R0") %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=ratio)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost\nRatio",option="A")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(.~as.factor(R0))+ylab(TeX(r'($c$)'))+facet_nested(.~lab2+as.factor(R0))+theme(legend.position = "bottom")
+g5
+
+```
+
+
+```{r,echo=FALSE}
+png("FIGS/Figure 3 delay.png",width=3.5,height=4,units='in',res=600)
+plot_grid(g5,g5b,labels=c("(a)","(b)"),ncol=1)
+dev.off()
+
+```
+
+```{r}
+png("Figure2 delay.png",width = 4, height = 6, units="in",res=600)
+plot_grid(g3,g4,labels=c("(a)","(b)"),ncol=1)
+dev.off()
+```
+
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  d %>%
+  filter(tau == tFinal & is.min == FALSE & tFinal %in% tFinal.vec) %>%
+  mutate(finalEpi = 1-s) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=finalEpi)) +
+  geom_tile() + scale_fill_viridis_c(name="Final\nEpidemic\nSize")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(as.factor(i0)~as.factor(R0))
+g
+
+```
+
+
+```{r,echo=FALSE}
+png(filename = "FIGS/RelCostMyopic delay.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+```{r}
+g <- d %>% 
+  filter(tFinal %in% c(44)&tFinal==tau&i0==0.0001&R0==1.5) %>%
+  ggplot(mapping=aes(x=c,y=Cost,color=as.factor(tFinal))) + geom_point()
+g
+```
+```{r}
+mult.sol <- d %>% 
+  filter(tFinal %in% c(40)&tFinal==tau&i0==0.0001&R0==1.5) %>%
+  group_by(c,tFinal) %>%
+  summarize(count=n()) %>%
+  filter(count>1) %>%
+  as.data.frame()
+```
+```{r}
+g <- d %>% 
+  filter(tFinal==tau&i0==0.0001&R0==1.5 &tFinal %in% tFinal.vec) %>%
+  ggplot(mapping=aes(x=finalEpi,y=scaledDistCost,shape=is.min)) + geom_line(span=.1,aes(group=as.factor(tFinal)),size=.1)+geom_point(aes(color=c))+ scale_color_viridis_c(name="c")+geom_label_repel(aes(label=tFinal))
+g
+```
+```{r}
+g <- d %>% 
+  filter(tFinal==tau&i0==0.0001&R0==1.5 &tFinal ==36) %>%
+  ggplot(mapping=aes(x=finalEpi,y=scaledDistCost,shape=is.min)) +geom_point(aes(color=c))+ scale_color_viridis_c(name="Relative Cost\nof Social\nDistancing")+ylab("Total Distancing")+xlab("Proportion Infected")+scale_shape(name="Global Min\n(Given c)")+ggtitle("Pareto-Optimum")
+g
+```
+
+```{r}
+g <- d %>% 
+  filter(tFinal==tau&i0==0.0001&R0==1.5 &tFinal ==36) %>%
+  ggplot(mapping=aes(x=finalEpi,y=scaledDistCost)) +geom_point()+ scale_color_viridis_c(name="Relative Cost\nof Social\nDistancing")+ylab("Distancing Cost\n(Arbitrary Units)")+xlab("Proportion Infected")+ggtitle("Pareto-Optimum")
+g
+```
+
+
+
+
+
+

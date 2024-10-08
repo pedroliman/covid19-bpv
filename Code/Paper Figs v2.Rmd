@@ -1,0 +1,183 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+library(Bolstad2)
+source("FUNCTIONS/CalculateCost.R")
+```
+
+```{r,echo=FALSE}
+multR015 <- read.csv("INTERMEDIATE/multR015.csv")
+multR03 <- read.csv("INTERMEDIATE/multR03.csv")
+multR045 <- read.csv("INTERMEDIATE/multR045.csv")
+multR06 <- read.csv("INTERMEDIATE/multR06.csv")
+```
+
+```{r}
+d <- rbind(multR015,multR03,multR045,multR06)
+```
+
+```{r}
+d <- d %>%
+  mutate(finalEpi = 1-s, distCost = Cost-finalEpi) 
+
+```
+
+```{r,echo=FALSE}
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d$RD <- d$R_tau
+```
+
+
+```{r}
+f <- function(x,R0){exp(-R0*(1-x))-x}
+```
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f,start = .5,nspec= 1,R0=1.5)[["root"]]
+
+S1.5max <- 1/1.5
+```
+
+```{r,echo=FALSE,dpi=600}
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 & d$is.min==TRUE,]
+```
+
+```{r}
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+
+require(tidyr)
+aux$c[aux$c == 0.025] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+x <- seq(0.01,1,.01)
+y <- -log(x)+x-1
+p <- as.data.frame(cbind(x,y))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
+g
+```
+
+```{r,echo=FALSE,dpi=600}
+
+
+require(tidyr)
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.04,0.4) & d$tFinal == 64,]
+aux$c[aux$c == 0.04] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation"
+aux.long <- gather(aux,key="key",value = "value",c("i","s","R_tau","Rt","RD"))
+```
+
+```{r}
+ann_text <- data.frame(tau=c(45,40),value = c(S1.5max,Sinf1.5),label=c("Max Suceptibles\n for Herd Immunity","Suceptibles Remaining in \n an Uncontrolled Epidemic"),key=c("s","s"),c=c("Mitigation","Mitigation"))
+
+g <- ggplot(aux.long[aux.long$key %in% c("i","s"),], aes(x = tau,y = value,linetype=key))+geom_line()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1))+facet_grid(.~c)+ylab("Proportion of Population")+geom_hline(yintercept=Sinf1.5,linetype="dashed",color="red")+geom_hline(yintercept=S1.5max,linetype="dashed",color="red")+scale_linetype(name="",labels=list(TeX(r'($i$)'),TeX(r'($s$)')))+geom_label(data=ann_text,aes(label=label),size=2.2,label.size = .1,label.padding=unit(.1,"lines"),label.r = unit(.1,"lines"))+theme(legend.position = "bottom")
+
+#+annotate("label",x=40,y=Sinf1.5,label="Suceptibles Remaining in \n an Uncontrolled Epidemic")+annotate("label",x=50,y=S1.5max,c="Mitigation",label="Max Suceptibles\n for Herd Immunity")
+
+
+g
+```
+
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+
+```{r,echo=FALSE,dpi=600}
+
+require(tidyr)
+g <- ggplot(aux.long[aux.long$key %in% c("RD","Rt"),], aes(x = tau,y = value,linetype = key))+geom_line()+theme_bw()+xlab(TeX(r'($\tau$)'))+scale_y_continuous(limits = c(0,1.5))+facet_grid(.~c)+ylab("")+geom_hline(yintercept=1,linetype="dashed",color="red")+scale_linetype_discrete(name="",breaks=c("RD","Rt"),labels=list(TeX(r'($R_D$)'),TeX(r'($R_{\tau}$)')))+theme(legend.position = "bottom")+ylab("Reproduction Number")
+
+g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/MitSup_policy.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+
+
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=Cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(as.factor(i0)~as.factor(R0))
+g
+
+```
+
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  d %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=finalEpi)) +
+  geom_tile() + scale_fill_viridis_c(name="Final\nEpidemic\nSize")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~ as.factor(i0))+facet_grid(as.factor(i0)~as.factor(R0))
+g
+
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/FinalEpiSize.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  d %>%
+  filter(tau == tFinal & is.min == FALSE & tFinal %in% tFinal.vec) %>%
+  mutate(finalEpi = 1-s) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=finalEpi)) +
+  geom_tile() + scale_fill_viridis_c(name="Final\nEpidemic\nSize")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(as.factor(i0)~as.factor(R0))
+g
+
+```
+
+
+```{r,echo=FALSE}
+png(filename = "FIGS/RelCostMyopic.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+```{r}
+g <- d %>% 
+  filter(tFinal %in% c(44)&tFinal==tau&i0==0.0001) %>%
+  ggplot(mapping=aes(x=c,y=Cost,color=as.factor(tFinal))) + geom_point()
+g
+```
+```{r}
+aux <- d %>% 
+  filter(tFinal %in% c(40)&tFinal==tau,i0==0.0001)
+table(aux$c)
+```
+
+```{r}
+g <- d %>% 
+  filter(tFinal %in% c(44)&i0==0.0001&c==0.05) %>%
+  ggplot(mapping=aes(x=tau,y=s,color=as.factor(case.id.c))) + geom_point()
+g
+
+```
+
+
+

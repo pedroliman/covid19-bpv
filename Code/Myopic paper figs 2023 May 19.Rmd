@@ -1,0 +1,272 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+library(Bolstad2)
+require(arules)
+require(egg)
+require(gridExtra)
+require(scales)
+require(cowplot)
+require(stargazer)
+require(ggpubr)
+source("FUNCTIONS/CalculateCost.R")
+```
+
+```{r,echo=FALSE}
+myopic_data = read.csv("INTERMEDIATE/sol.explore-myopic20210730.csv") %>%
+  dplyr::select(tau, s, i, R_tau, Rt, case.id)
+
+myopic_exp_design = read.csv("INTERMEDIATE/exper.design-round13.csv") %>%
+  dplyr::select(case.id, c, R0, i0, tFinal)
+
+myopic_data <- left_join(myopic_data,myopic_exp_design)
+dm <- myopic_data
+e <- myopic_exp_design
+multR015 <- read.csv("INTERMEDIATE/multR015.csv")
+multR03 <- read.csv("INTERMEDIATE/multR03.csv")
+multR045 <- read.csv("INTERMEDIATE/multR045.csv")
+multR06 <- read.csv("INTERMEDIATE/multR06.csv")
+
+all_cases = read.csv("INTERMEDIATE/sol.explore.all.csv")
+all_cases2 <- read.csv("INTERMEDIATE/parallel.output2.csv")
+all_cases3 <- read.csv("INTERMEDIATE/parallel.output3.csv")
+all_casesR03 <- read.csv("INTERMEDIATE/output-R03.csv")
+all_casesR045 <- read.csv("INTERMEDIATE/output-R045.csv")
+
+all_cases4 <- rbind(all_cases,all_cases2,all_cases3)
+all_cases4 <-  subset(all_cases4,solved==TRUE&R0!=3&R0!=4.5)
+all_cases4 <- rbind(all_cases4,all_casesR03[,1:dim(all_cases4)[2]],all_casesR045[,1:dim(all_cases4)[2]])
+
+```
+```{r}
+d2 <- all_cases4
+```
+
+```{r}
+d <- rbind(multR015,multR03,multR045,multR06)
+d$id <- paste(d$R0,d$c,d$tFinal,d$i0,sep="_")
+d <- subset(d,is.min==TRUE)
+```
+
+
+```{r,echo=FALSE}
+row.names(e) <- e$case.id
+d$R0 <- e[d$case.id,"R0"]
+d$tFinal <- e[d$case.id,"tFinal"]
+d$i0 <- e[d$case.id,"i0"]
+d$c <- e[d$case.id,"c"]
+d$twp.success <- e[d$case.id,"twp.success"]
+
+d$optimization <- "full"
+d2$optimization <- "full"
+dm$optimization <- "myopic"
+dm$twp.success <- NA
+dm$R0 <- e[dm$case.id,"R0"]
+dm$tFinal <- e[dm$case.id,"tFinal"]
+dm$i0 <- e[dm$case.id,"i0"]
+dm$c <- e[dm$case.id,"c"]
+dm <- dm[,names(dm) %in% names(d)]
+d <- d[,names(d) %in% names(dm)]
+d2 <- d2[,names(d2) %in% names(dm)]
+d<- rbind(d,dm,d2)
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d$RD <- d$R_tau
+```
+
+```{r,echo=FALSE}
+theme_set(theme_bw())
+```
+
+```{r,echo=FALSE}
+d$RD <- d$R_tau
+```
+
+
+```{r}
+f1.5 <- function(x){exp(-1.5*(1-x))-x}
+f2.5 <- function(x){exp(-2.5*(1-x))-x}
+f5 <- function(x){exp(-5*(1-x))-x}
+```
+
+```{r}
+
+Sinf1.5 <- multiroot.1D(f=f1.5,start = .5,nspec= 1)[["root"]]
+Sinf2.5 <- multiroot.1D(f=f2.5,start = .5,nspec= 1)[["root"]]
+Sinf5 <- multiroot.1D(f=f5,start = .5,nspec= 1)[["root"]]
+
+S1.5max <- 1/1.5
+S2.5max <- 2.5
+S5max <- 5
+d$tau <- as.numeric(d$tau)
+#d$months <- d$tau/2
+#d$tFinal <- factor(d$tFinal,levels = c(8,16, 32, 64, 128))
+```
+
+```{r,echo=FALSE,dpi=600}
+aux <- d[d$R0 == 1.5&d$i0==0.0001&d$c%in% c(0.025,0.4) & d$tFinal == 64 &d$optimization == "full",]
+```
+
+```{r}
+aux$c[aux$c == 0.02] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+
+require(tidyr)
+aux$c[aux$c == 0.02] <- "Suppression"
+aux$c[aux$c == 0.4] <- "Mitigation (Herd Immunity)"
+x <- seq(0.01,1,.01)
+y <- -log(x)+x-1
+p <- as.data.frame(cbind(x,y))
+g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c(0,.2,.4,.6,.8,1),labels = c(0, "0.2","0.4","0.6","0.8","1"))+xlab("RD")+ylab("g(x)")+xlab("x")+scale_y_continuous(breaks= c(0,1,2,3),labels = c(0, "1", "2","3"))
+g
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+myopic_final_data = myopic_data %>%
+  dplyr::filter(tFinal == tau&case.id>417) %>%
+  mutate(EpiSize = 1-s) 
+```
+
+```{r}
+
+g <- myopic_final_data %>%
+  ggplot(data = ., mapping = aes(x = tFinal, y = c, fill = EpiSize)) +
+  geom_tile() + facet_wrap(R0~.)+scale_fill_viridis_c(name="Final Epidemic Size")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")
+g
+```
+```{r,echo=FALSE}
+png(filename = "FIGS/myopic_tile_plot.png",height = 5,width=6,units = "in",res = 600)
+g
+dev.off()
+
+```
+
+
+
+```{r}
+myopic_cost <- CalculateCost(myopic_data)
+myopic_cost <- myopic_cost[myopic_cost$case.id>417&myopic_cost$i0==0.0001,]
+```
+
+```{r}
+myopic_cost$id <-  paste(myopic_cost$R0,myopic_cost$c,myopic_cost$tFinal,myopic_cost$i0,sep="_")
+ids <- unique(myopic_cost$id)
+d$id <- paste(d$R0,d$c,d$tFinal,d$i0,sep="_")
+```
+
+```{r}
+table(ids%in% d$id)
+```
+
+```{r}
+g <-  ggplot(myopic_cost[myopic_cost$case.id>417&myopic_cost$i0==0.0001,], mapping = aes(x = tFinal, y = c, fill = cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+
+```
+
+
+
+
+```{r}
+full_opt <- d %>%
+  dplyr::filter(i0==0.0001&optimization=="full")
+```
+
+```{r}
+opt_cost <- CalculateCost(full_opt)
+```
+
+```{r}
+opt_cost$cost3 <- opt_cost$cost2
+opt_cost <- as.data.frame(opt_cost)
+opt_cost$id <- paste(opt_cost$R0,opt_cost$c,opt_cost$tFinal,opt_cost$i0,sep="_")
+```
+
+```{r}
+table(ids %in% opt_cost$id)
+
+```
+```{r}
+ids[!(ids %in% opt_cost$id)]
+```
+
+```{r}
+myopic_cost$id <- paste(myopic_cost$R0,myopic_cost$c,myopic_cost$tFinal,myopic_cost$i0,sep="_")
+opt_cost$id <- paste(opt_cost$R0,opt_cost$c,opt_cost$tFinal,opt_cost$i0,sep="_")
+
+row.names(myopic_cost) <- myopic_cost$id
+opt_cost <- opt_cost[!(duplicated(opt_cost$case.id)),]
+row.names(opt_cost) <- opt_cost$id
+opt_cost$my_cost <- myopic_cost[as.character(row.names(opt_cost)),"cost"]
+
+```
+
+```{r}
+opt_cost$ratio <- opt_cost$my_cost/opt_cost$cost
+opt_cost <- subset(opt_cost,tFinal %in% tFinal.vec)
+```
+
+```{r}
+g <-  ggplot(opt_cost[!is.na(opt_cost$ratio)&opt_cost$R0 %in% c(1.5,3,4.5)&opt_cost$tFinal < 80&opt_cost$ratio>=.99,], aes(x = tFinal, y = c,fill=ratio)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost Ratio")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+```
+```{r}
+g <-  ggplot(opt_cost[!is.na(opt_cost$cost)&opt_cost$R0 %in% c(1.5,3,4.5)&opt_cost$tFinal < 80&opt_cost$ratio>=.99,], aes(x = tFinal, y = c,fill=cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost Ratio")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+```
+```{r}
+g <-  ggplot(opt_cost[!is.na(opt_cost$cost),], aes(x = tFinal, y = c,fill=ratio)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost Ratio")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+```
+
+```{r,echo=FALSE}
+png(filename = "FIGS/RelCostMyopic.png",height = 3,width=4,units = "in",res = 800)
+g
+dev.off()
+
+```
+
+```{r}
+opt_cost.prob <- subset(opt_cost,is.na(ratio))
+
+```
+
+
+```{r}
+g <-  ggplot(opt_cost, aes(x = tFinal, y = c,fill=my_cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost Ratio")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~R0)
+g
+```
+
+

@@ -19,40 +19,21 @@ source("FUNCTIONS/CalculateCost.R")
 ```
 
 ```{r,echo=FALSE}
-d <- read.csv("INTERMEDIATE/sol.explore-step12.csv")
-dm <- read.csv("INTERMEDIATE/sol.explore-myopic.csv")
-e <- read.csv("INTERMEDIATE/exper.design-step11.csv")
+multR015 <- read.csv("INTERMEDIATE/multR015.csv")
+d <- multR015
 ```
 
 ```{r,echo=FALSE}
-row.names(e) <- e$case.id
-d$R0 <- e[d$case.id,"R0"]
-d$tFinal <- e[d$case.id,"tFinal"]
-d$i0 <- e[d$case.id,"i0"]
-d$c <- e[d$case.id,"c"]
-d$twp.success <- e[d$case.id,"twp.success"]
-
-d$optimization <- "full"
-dm$optimization <- "myopic"
-dm$twp.success <- NA
-dm$R0 <- e[dm$case.id,"R0"]
-dm$tFinal <- e[dm$case.id,"tFinal"]
-dm$i0 <- e[dm$case.id,"i0"]
-dm$c <- e[dm$case.id,"c"]
-d <- rbind(d,dm)
 theme_set(theme_bw())
 ```
 
 ```{r,echo=FALSE}
-d <- subset(d,c %in% c(0.025, 0.05, 0.1, 0.2, 0.4))
 d$RD <- d$R_tau
 ```
 
 
 ```{r}
-f1.5 <- function(x,R0){exp(-1.5*(1-x))-x}
-f2.5 <- function(x,R0){exp(-2.5*(1-x))-x}
-f5 <- function(x,R0){exp(-5*(1-x))-x}
+f1.5 <- function(x,R0){exp(-R0*(1-x))-x}
 ```
 ```{r}
 
@@ -289,9 +270,23 @@ opt_cost$cost3 <- opt_cost$cost2
 opt_cost <- as.data.frame(opt_cost)
 ```
 
+
+
 ```{r}
-g <-  ggplot(opt_cost, aes(x = tFinal, y = c,fill=cost)) +
-  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")
+tFinal.vec <- seq(8,80,by=4)
+g <-  multR015 %>%
+  filter(tau == tFinal & is.min == TRUE & tFinal %in% tFinal.vec) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=Cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~ as.factor(i0))
+g
+
+```
+```{r}
+tFinal.vec <- seq(8,80,by=4)
+g <-  multR015 %>%
+  filter(tau == tFinal & is.min == FALSE & tFinal %in% tFinal.vec) %>%
+  ggplot(mapping= aes(x = tFinal, y = c,fill=Cost)) +
+  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_wrap(.~ as.factor(i0))
 g
 
 ```

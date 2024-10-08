@@ -43,6 +43,30 @@ oneComparmentSIR <- function(x, y, parms) {
     })
 }
 
+oneComparmentSIRmu <- function(x, y, parms) {
+  
+  with(as.list(c(y, parms)),{
+    s <- y[1] 
+    i <- y[2] 
+    mu_s <- y[3]
+    mu_i <- y[4]
+    
+    R_tau = R_0/(1+R_0*s*i*(mu_s-mu_i))
+    
+    ds <- -R_tau *s *i
+    
+    di <- i * (R_tau*s-1)
+    
+    dmu_s <- R_tau*i*(mu_s-mu_i)
+    
+    dmu_i <- R_tau*s*(1+mu_s-mu_i)+mu_i
+    
+    dCost <- (-log(R_tau/R_0)+R_tau/R_0-1)
+    
+    return(list(c(ds,di,dmu_s,dmu_i,dCost)))
+  })
+}
+
 
 sol.explore <- read.csv("INTERMEDIATE/sol.explore13.csv")
 sol.explore$case.id <- paste0(sol.explore$case.id,sol.explore$case.id.c)

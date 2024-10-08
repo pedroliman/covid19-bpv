@@ -1,0 +1,56 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+
+source("FUNCTIONS/CalculateCost.R")
+source("FUNCTIONS/FindUniqueSols.R")
+
+
+```
+
+```{r,echo=FALSE}
+multR1pt5 <- read.csv("INTERMEDIATE/outputR0-1pt5Dec7.csv")
+multR3 <- read.csv("INTERMEDIATE/outputR0-3.csv")
+multR4pt5 <- read.csv("INTERMEDIATE/outputR0-4pt5.csv")
+multR6 <- read.csv("INTERMEDIATE/outputR0-6.csv")
+
+```
+
+
+
+```{r}
+multR015 <- FindUniqueSols(multR1pt5)
+multR03 <- FindUniqueSols(multR3)
+multR045 <- FindUniqueSols(multR4pt5)
+multR06 <- FindUniqueSols(multR6)
+
+```
+
+
+
+
+```{r}
+
+write.csv(multR015,"INTERMEDIATE/multR015.csv")
+write.csv(multR03,"INTERMEDIATE/multR03.csv")
+write.csv(multR045,"INTERMEDIATE/multR045.csv")
+write.csv(multR06,"INTERMEDIATE/multR06.csv")
+
+```
+
+
+
+

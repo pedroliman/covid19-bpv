@@ -92,16 +92,6 @@ g <- ggplot(p,aes(x=x,y=y))+geom_line()+theme_bw()+scale_x_continuous(breaks = c
 g
 ```
 
-```{r}
-\begin{equation}
-\begin{aligned}
-\frac{d}{d \tau}{s}&= -R_D si,\\
-\frac{d}{d\tau}i&=R_D si-i,\\
-\frac{d}{d\tau}r&=i.
-\end{aligned}
-\label{eq:dimlessSIRdyn}
-\end{equation}
-```
 
 ```{r,echo=FALSE,dpi=600}
 aux$c[aux$c == 0.025] <- "Suppression"
@@ -407,13 +397,7 @@ g
 
 
 
-```{r}
-g <- multR03 %>% filter(tFinal==tau&i0==0.005) %>%
-ggplot( mapping = aes(x = tFinal, y = c, fill = cost2)) +
-  geom_tile() + scale_fill_viridis_c(name="Cost")+xlab(TeX(r'($T_{final}$)'))+theme(legend.position = "bottom")+facet_grid(.~is.min)
-g
 
-```
 ```{r}
 g <- multR03 %>% filter(tFinal==tau&i0==0.005) %>%
  mutate(epiSize=1-s-i) %>%

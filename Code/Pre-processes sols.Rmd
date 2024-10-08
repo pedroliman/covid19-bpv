@@ -1,0 +1,98 @@
+---
+title: "Calculus of Variations Approach to Social Distancing"
+output: powerpoint_presentation
+---
+
+```{r,echo=FALSE}
+require(ggplot2)
+require(viridis)
+require(ggthemes)
+require(rootSolve)
+require(latex2exp)
+library(dplyr)
+library(reshape2)
+library(stringr)
+library(fields)
+library(DescTools)
+
+source("FUNCTIONS/CalculateCost.R")
+source("FUNCTIONS/FindUniqueSols.R")
+
+
+```
+
+```{r,echo=FALSE}
+multR06 <- read.csv("INTERMEDIATE/output-multipleSol.csv")
+multR03 <- read.csv("INTERMEDIATE/output-multipleSolR03.csv")
+multR1pt53 <- read.csv("INTERMEDIATE/outputR01.5and3.csv")
+```
+
+```{r}
+all.sol <- rbind(multR03,multR06,multR1pt53)
+```
+
+
+```{r}
+all.sol <- subset(all.sol,solved != "solved")
+all.sol <- CalculateCost(all.sol)
+```
+```{r}
+multR03 <- subset(rbind(multR03,multR1pt53),solved != "solved"&R0==3)
+costs <- CalculateCost(multR03)
+```
+
+```{r}
+multR03 <- FindUniqueSols(multR03,costs)
+```
+
+```{r}
+multR06 <- subset(multR06,solved != "solved")
+costs <- CalculateCost(multR06)
+```
+
+```{r}
+multR06 <- FindUniqueSols(multR06,costs)
+```
+
+```{r}
+multR015 <- subset(multR1pt53,solved != "solved"&R0==1.5)
+costs <- CalculateCost(multR015)
+```
+
+```{r}
+multR015 <- FindUniqueSols(multR015,costs)
+```
+
+```{r}
+colsNum <- function(df){
+  for(n in c("tau","lambda_s","lambda_i","R_tau","Rt","c","i","tFinal","s","case.id","R0","i0","case.id.c")){
+  df[,n] <- as.numeric(df[,n])
+  }
+  df$solved <- as.logical(df$solved)
+  return(df)
+}
+```
+
+```{r}
+multR03 <- colsNum(multR03)
+multR06 <- colsNum(multR06)
+multR015 <- colsNum(multR015)
+
+```
+
+```{r}
+sol.explore <- sol.explore[,c("tau","s","i","lambda_s","lambda_i","R_tau","Rt","tFinal","case.id")]
+sol.explore13 <- bind_rows(sol.explore,multR03,multR06)
+```
+
+```{r}
+write.csv(multR03,"INTERMEDIATE/multR03.csv")
+write.csv(multR06,"INTERMEDIATE/multR06.csv")
+write.csv(multR015,"INTERMEDIATE/multR015.csv")
+
+write.csv(sol.explore13,"INTERMEDIATE/sol.explore13.csv")
+```
+
+
+
+

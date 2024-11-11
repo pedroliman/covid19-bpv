@@ -46,7 +46,7 @@ oneComparmentSIRmu <- function(x, y, parms) {
     
     dmu_s <- R_tau*i*(mu_s-mu_i)
     
-    dmu_i <- R_tau*s*(1+mu_s-mu_i)+mu_i
+    dmu_i <- R_tau*s*(mu_s-mu_i)+mu_i
     
     dCost <- (-log(R_tau/R_0)+R_tau/R_0-1)
     

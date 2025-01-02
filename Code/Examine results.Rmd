@@ -9,6 +9,9 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r}
 d <- read.csv("INTERMEDIATE/mu.solutions.2groups.final.csv")
+d2 <- read.csv("INTERMEDIATE/mu.solutions.csv")
+d2 <- subset(d2,R0==3)
+sFin <- d2$sFinal
 d <- d[!is.na(d$tau),]
 unique.cases <- unique(d$case.id)
 aux <- subset(d,delta==0)
@@ -18,11 +21,42 @@ plot(aux2$tau,aux2$nu2)
 plot(aux2$tau,aux2$rho12)
 plot(aux2$tau,aux2$rho21)
 plot(aux2$tau,aux2$rho22)
+intersect(sFin,aux$sFinal)
+
+y <- subset(d2,sFinal==.16)
+z <- subset(aux,sFinal==.16)
+z <- z[!duplicated(z[,c("case.id","tau")]),]
 ```
 
+```{r}
+d$c1 <- NA
+d$c2 <- NA
+d$c1[d$tau==d$tFinal] <- 1/d$mu1[d$tau==d$tFinal]
+d$c2[d$tau==d$tFinal] <- 1/d$mu2[d$tau==d$tFinal]
+
+```
+```{r}
+d <- read.csv("INTERMEDIATE/mu.neighbors432groups.csv")
+aux <- subset(d,solved==FALSE)
+aux2 <- subset(d,solved==TRUE)
+
+summary(aux$sFinal)
+summary(aux2$sFinal)
+```
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
+```{r}
+require(ggplot2)
+require(viridis)
+g <-ggplot(d[d$c2>0&d$c1>0,],aes(x=sFinal,y=delta,color=c1))+geom_point(size=1)+
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))+
+  theme_bw()+
+  scale_color_viridis_c()
+
+g
+```

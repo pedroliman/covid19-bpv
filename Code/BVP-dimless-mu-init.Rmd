@@ -70,6 +70,7 @@ neighbors$neighbor_solved <- FALSE
 ```{r}
     solved.count <- 0
 ```
+
 ```{r}
 for(pos in 1:dim(exper.design)[1]){
 print(Sys.time())

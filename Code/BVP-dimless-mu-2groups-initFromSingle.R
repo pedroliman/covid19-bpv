@@ -1,4 +1,9 @@
-
+sol <- read.csv("INTERMEDIATE/mu.solutions.2groups.final.csv")
+neighbors <- read.csv("INTERMEDIATE/mu.neighbors0.2groups.csv")
+solved <- unique(sol$case.id)
+neighbors$solved[neighbors$case.id.mu %in% solved] <- TRUE
+neighbors$neighbor_solved[neighbors$neighbor_num %in% solved] <- TRUE
+iter.num <- 0
 solved.count <- 1
 while(solved.count !=0){
   rm(list=ls())
@@ -92,9 +97,10 @@ with(as.list(c(y, parms)),{
 })
 }
 
-iter.num <- get(base::load("iter.num.2groups.Rdata"))
-#exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu",iter.num,".2groups.csv"),row.names = NULL)
-exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu0.2groups.csv"),row.names = NULL)
+#iter.num <- get(base::load("iter.num.2groups.Rdata"))
+iter.num <- 0
+exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu",iter.num,".2groups.csv"),row.names = NULL)
+#exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu0.2groups.csv"),row.names = NULL)
 
 neighbors <- read.csv(paste0("INTERMEDIATE/mu.neighbors",iter.num,".2groups.csv"),row.names = NULL)
 sol.explore <- read.csv(paste0("INTERMEDIATE/mu.solutions.2groups.csv"),row.names = NULL)
@@ -109,8 +115,7 @@ aux <- aux[!duplicated(aux$case.id.mu),]
 for(i in 1:dim(aux)[1]){
 print(Sys.time())
   pos <- which(exper.design$case.id.mu==aux[i,"neighbor_num"])
-  pos <- which(exper.design$case.id.mu==aux[i,"case.id.mu"])
-  
+
   case.id <- exper.design$case.id.mu[pos]
   aux[i,"case.id.mu"]
   print(case.id)
@@ -142,6 +147,7 @@ print(Sys.time())
      guess <- guess[!duplicated(guess),]
      xguess <- guess[,"tau"]
      yguess <- t(guess[,c("s1","s2","i1","i2","mu1","mu2","nu1","nu2","Cost")])
+   
      res <- try(bvptwp(yini = yini,yend=yend,x=t,parms = list(r11=R_0,r12=R_0,r21=R_0,r22=R_0,a11=.25,a12=.25,a21=.25,a22=.25),func = twoComparmentSIRmu,
                        xguess = xguess,yguess = yguess,nmax=length(t)*5))
 
@@ -200,14 +206,13 @@ print(Sys.time())
     print(solved)
 print(Sys.time())
 
-
 print(solved.count)
 iter.num <- iter.num+1
-write.csv(exper.design,paste0("INTERMEDIATE/exper.design.mu",iter.num,".csv"),row.names=FALSE)
+write.csv(exper.design,paste0("INTERMEDIATE/exper.design.mu",iter.num,".2groups.csv"),row.names=FALSE)
 write.csv(neighbors,paste0("INTERMEDIATE/mu.neighbors",iter.num,"2groups.csv"),row.names=FALSE)
 
-save(iter.num,file="iter.num.Rdata")
-
+save(iter.num,file="iter.num.2groups.Rdata")
+source("BVP-dimless-mu-2groups-iter.R")
 }
 
 

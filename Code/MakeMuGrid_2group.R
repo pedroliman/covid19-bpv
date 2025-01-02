@@ -5,9 +5,9 @@ R0 <- seq(1.5,2,by=R0step)
 R0 <- 3
 i0 <- c(0.0001)
 sFinalStep <- 0.01
-sFinal <- c(seq(.0001,.001,by=.0001),seq(.001,.01,by=.001),seq(0.01,1,by=sFinalStep))
-#delta <- seq(0,.1,by=sFinalStep)
-delta <- c(seq(0,.001,by=.0001),seq(.001,.01,by=.001),seq(0.01,1,by=sFinalStep))
+sFinal <- seq(0,1,by=sFinalStep)
+delta <- seq(0,1,by=sFinalStep)
+num.neighbors <- 10
 exper.design.mu <- expand.grid(tFinal,R0,i0,sFinal,delta)
 
 param.list <- c("tFinal","R0","i0","sFinal","delta")
@@ -28,19 +28,19 @@ find_one_step_neighbors <- function(y) {
   current_row <- y[1:5]  # Exclude the 'case.id.mu' column for the current row
   
   # Find neighbors one step away along each parameter dimension
-  neighbors <- apply(data.steps[, param.list], 1, function(x) {
+  diffs <- apply(data.steps[, param.list], 1, function(x) {
     diff = sum(abs(current_row - x))
-    is_one_step_away <- abs(diff - 1) < 0.0000001
-    return(is_one_step_away)
+
+    return(diff)
   })
-  
+  smallest_diffs <- sort(diffs)[1:num.neighbors]
   # Find the indices of the neighbors
-  neighbor_indices <- which(neighbors)
+  neighbor_indices <- which(diffs %in% smallest_diffs)[1:num.neighbors]
   
   # Get case IDs of neighbors and pad with NA if less than 4 neighbors found
   out <- data.steps[neighbor_indices, "case.id.mu"]
-  if (length(out) < 6) {
-    pad_length <- 6 - length(out)
+  if (length(out) < num.neighbors) {
+    pad_length <- num.neighbors - length(out)
     out <- c(out, rep(NA, pad_length))
   }
   return(out)
@@ -52,13 +52,14 @@ data.steps.with.neighbors <- apply(data.steps, 1, find_one_step_neighbors)
 
 # Create column names for the neighbor columns
 exper.design.mu$solved <- FALSE
-neighbor_col_names <- paste0("neighbor_", 1:6)
+neighbor_col_names <- paste0("neighbor_", 1:num.neighbors)
 
 
 
 # Add the neighbor columns to the original data frame
-exper.design.mu[, neighbor_col_names] <- do.call('rbind',data.steps.with.neighbors)[,1:6]
+#exper.design.mu[, neighbor_col_names] <- do.call('rbind',data.steps.with.neighbors)[,1:6]
 
+exper.design.mu[, neighbor_col_names] <- t(data.steps.with.neighbors)
 
 
 # Save the data frame with the added neighbor information
@@ -95,7 +96,13 @@ neighbors <- exper.design.mu %>%
                names_to = "name",
                values_to = "neighbor_num") 
 neighbors$neighbor_solved <- FALSE
+neighbors$neighbor_solved[which(neighbors$neighbor_num %in% unique(aux2$case.id.mu))] <- TRUE
+neighbors$solved[which(neighbors$case.id.mu %in% unique(aux2$case.id.mu))] <- TRUE
 
-write.csv(aux2,"INTERMEDIATE/mu.solutions.2groups.csv")
+write.csv(aux2[,c("tau","s1","s2","i1","i2","mu1","mu2","nu1","nu2","Cost","rho11","rho12","rho21","rho22","case.id.mu",
+                  "R0","tFinal","sFinal","delta","i0","solved")],"INTERMEDIATE/mu.solutions.2groups.final.csv",row.names = FALSE)
 
-write.csv(neighbors,"INTERMEDIATE/mu.neighbors0.2groups.csv")
+write.csv(neighbors,"INTERMEDIATE/mu.neighbors02groups.csv")
+iter.num <- 0
+save(iter.num,file="iter.num.2groups.Rdata")
+

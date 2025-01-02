@@ -73,24 +73,27 @@ iter.num <- get(base::load("iter.num.2groups.Rdata"))
 #exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu",iter.num,".2groups.csv"),row.names = NULL)
 exper.design <- read.csv(paste0("INTERMEDIATE/exper.design.mu0.2groups.csv"),row.names = NULL)
 
-neighbors <- read.csv(paste0("INTERMEDIATE/mu.neighbors",iter.num,".2groups.csv"),row.names = NULL)
+neighbors <- read.csv(paste0("INTERMEDIATE/mu.neighbors",iter.num,"2groups.csv"),row.names = NULL)
 sol.explore <- read.csv(paste0("INTERMEDIATE/mu.solutions.2groups.final.csv"),row.names = NULL)
 
 sol.explore$X <- NULL
     solved.count <- 0
     
-#aux <- subset(neighbors,solved==TRUE&neighbor_solved==FALSE&!is.na(neighbor_num))
-aux <- subset(neighbors,case.id.mu %in% sol.explore$case.id.mu)
-aux <- aux[!duplicated(aux$case.id.mu),]
+aux <- subset(neighbors,solved==TRUE&neighbor_solved==FALSE&!is.na(neighbor_num))
+#aux <- subset(neighbors,case.id.mu %in% sol.explore$case.id.mu)
+#aux <- aux[!duplicated(aux$case.id.mu),]
 #aux <- aux[-1,]
+print(sum(neighbors$solved))
+print(dim(aux))
+solved.cases <- c()
 for(i in 1:dim(aux)[1]){
-print(Sys.time())
+#print(Sys.time())
   pos <- which(exper.design$case.id.mu==aux[i,"neighbor_num"])
-  pos <- which(exper.design$case.id.mu==aux[i,"case.id.mu"])
-  
+
   case.id <- exper.design$case.id.mu[pos]
+if(!(case.id %in% solved.cases)){
   aux[i,"case.id.mu"]
-  print(case.id)
+  #print(case.id)
    tFinal <- exper.design$tFinal[pos]
    donor.case <- aux[i,"case.id.mu"]
    # c needs to become s (select s final from exper.design)
@@ -115,21 +118,43 @@ print(Sys.time())
   unique.costs <- c()
  
     solved <- FALSE
-     guess <- subset(sol.explore,case.id.mu == donor.case)
-     guess <- guess[!duplicated(guess),]
+   
+     guess <- subset(sol.explore,case.id.mu %in% donor.case)
+     guess <- guess[!duplicated(guess$tau),]
      xguess <- guess[,"tau"]
      yguess <- t(guess[,c("s1","s2","i1","i2","mu1","mu2","nu1","nu2","Cost")])
+  
+
      res <- try(bvptwp(yini = yini,yend=yend,x=t,parms = list(r11=R_0,r12=R_0,r21=R_0,r22=R_0,a11=.25,a12=.25,a21=.25,a22=.25),func = twoComparmentSIRmu,
                        xguess = xguess,yguess = yguess,nmax=length(t)*5))
 
 
       solved <- !inherits(res, "try-error")
+      
+      if(inherits(res,"try-error")){
+      error_message <- conditionMessage(attr(res, "condition"))
+      
+      # Check if the error is 'subscript out of bounds'
+      if (grepl("subscript out of bounds", error_message)) {
+        # Print the specific error message and stop execution
+        stop("Execution stopped due to 'subscript out of bounds' error: ", error_message)
+      } else {
+        # Print other errors and allow continuation
+        print("Non-critical error detected:")
+        print(error_message)
+      }
+}
+
+
       #gc()
-      print(solved)
+     # print(solved)
      # print(gc())
    
       if(solved==TRUE){
-        print(solved.count)
+        solved.cases <- c(solved.cases,case.id)
+        print("delta is")
+        print(delta)
+        #print(solved.count)
         solved.count <- solved.count +1
         sol <- as.data.frame(res)
         sol <- sol[,1:10]
@@ -144,9 +169,8 @@ print(Sys.time())
                    rho21 = (.25*R_0)/(.25+R_0*s2*i1*(mu2-nu2)),
                    rho22 = (.25*R_0)/(.25+R_0*s2*i2*(mu2-nu2)),
                  tFinal=tFinal,
-                 case.id = case.id)
+                 case.id.mu = case.id)
         sol <- subset(sol,tau %in% t)
-        sol$case.id <- case.id
         sol$R0 <- R_0
         sol$tFinal <- tFinal
         sol$sFinal <- sFinal
@@ -155,10 +179,9 @@ print(Sys.time())
         sol$solved <- solved
         exper.design[pos,"solved"] <- TRUE
         neighbors[which(neighbors$neighbor_num==case.id),"neighbor_solved"] <- TRUE
-        
         neighbors[which(neighbors$case.id.mu==case.id),"solved"] <- TRUE
         write.table(
-          sol,
+          sol[,names(sol.explore)],
           file = paste0("INTERMEDIATE/mu.solutions.2groups.final.csv"),
           sep = ",",         # Set the separator according to your CSV format
           col.names = FALSE, # Don't write column names if the file already exists
@@ -169,21 +192,25 @@ print(Sys.time())
       } else {
         row <- intersect(which(neighbors$neighbor_num==case.id),which(neighbors$case.id.mu==donor.case))
         neighbors[row,"neighbor_solved"] <- "TF" 
+        print("tried, failed")
       }
  
     
-}          
+} else {
+  print("already solved")
+}
+}
 
-    print(solved)
-print(Sys.time())
+ #   print(solved)
+#print(Sys.time())
 
 
-print(solved.count)
+#print(solved.count)
 iter.num <- iter.num+1
 write.csv(exper.design,paste0("INTERMEDIATE/exper.design.mu",iter.num,".csv"),row.names=FALSE)
 write.csv(neighbors,paste0("INTERMEDIATE/mu.neighbors",iter.num,"2groups.csv"),row.names=FALSE)
 
-save(iter.num,file="iter.num.Rdata")
+save(iter.num,file="iter.num.2groups.Rdata")
 
 }
 

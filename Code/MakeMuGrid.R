@@ -1,6 +1,6 @@
 tFinal <- c(50)
 R0step = .05
-R0 <- seq(1.5,3,by=R0step)
+R0 <- seq(3,3,by=R0step)
 i0 <- c(0.0001)
 sFinalStep <- 0.01
 sFinal <- seq(0.01,1,by=sFinalStep)

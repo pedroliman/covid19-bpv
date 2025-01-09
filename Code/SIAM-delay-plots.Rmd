@@ -1,0 +1,122 @@
+```{r}
+require(ggplot2)
+require(viridis)
+require(tidyr)
+require(ggh4x)
+```
+
+
+```{r}
+d <- read.csv("INTERMEDIATE/sol.explore-myopic-delay.csv")
+
+
+```
+
+
+```{r}
+d$s <- d$X1
+d$i <- d$X2
+d$cost <- d$X3
+d$tau <- d$time
+d$R.rel <- d$R_tau/d$R0
+aux <- subset(d,tFinal==24&c %in% c(.01,.1,.4))
+
+aux$lab <- "R0"
+aux$lab2 <- "c"
+g <- ggplot(aux,aes(x=tau,y=i,linetype=factor(delay)))+geom_line()+facet_nested(lab2+c~lab+R0)+theme_bw()+scale_linetype(name="Delay")
+
+g
+```
+```{r}
+png("Delay infections.png",height=4,width=6,units = "in", res=150)
+g
+dev.off()
+```
+
+```{r}
+
+
+g <- ggplot(aux,aes(x=tau,y=R.rel,linetype=factor(delay)))+geom_line()+facet_nested(lab2+c~lab+R0)+theme_bw()+scale_linetype(name="Delay")+ylab("RD/R0")
+
+g
+```
+
+```{r}
+png("Delay policies.png",height=4,width=6,units = "in", res=150)
+g
+dev.off()
+```
+
+```{r}
+d$s <- d$X1
+d$i <- d$X2
+d$tau <- d$time
+d$R.rel <- d$R_tau/d$R0
+
+g <- ggplot(aux,aes(x=tau,y=cost,linetype=factor(delay)))+geom_line()+facet_nested(lab2+c~lab+R0)+theme_bw()
+
+g
+```
+
+
+
+
+```{r}
+aux2 <- subset(d,tau==tFinal)
+aux2$finalEpi <- 1-aux2$s
+aux2$distanceCost <- aux2$cost-aux2$finalEpi
+g <- ggplot(aux2,aes(x=tFinal,y=c,fill=finalEpi))+geom_tile()+facet_grid(delay~R0)+scale_fill_viridis()+theme_bw()
+g
+```
+
+```{r}
+aux2 <- subset(d,tau==tFinal)
+aux2$finalEpi <- 1-aux2$s
+aux2$distanceCost <- aux2$cost-aux2$finalEpi
+g <- ggplot(aux2,aes(x=tFinal,y=c,fill=distanceCost))+geom_tile()+facet_grid(delay~R0)+scale_fill_viridis()+theme_bw()
+g
+```
+
+```{r}
+aux2 <- subset(d,tau==tFinal)
+aux2$finalEpi <- 1-aux2$s
+aux2$distanceCost <- aux2$cost-aux2$finalEpi
+g <- ggplot(aux2,aes(x=tFinal,y=c,fill=cost))+geom_tile()+facet_grid(delay~R0)+scale_fill_viridis()+theme_bw()
+g
+```
+```{r}
+df_selected <- aux2 %>%
+  select(tFinal, c, i0, delay, cost,R0)
+
+
+df_wide <- df_selected %>%
+  pivot_wider(names_from = delay, values_from = cost, names_prefix = "delay_")
+
+df_wide$delay1.cost <- df_wide$delay_1-df_wide$delay_0
+df_wide$delay2.cost <- df_wide$delay_2-df_wide$delay_0
+
+df_long <- df_wide %>%
+  pivot_longer(
+    cols = ends_with(".cost"),
+    names_to = "delay",
+    values_to = "cost.diff"
+  )
+df_long$lab <- "R0"
+df_long$lab2 <- "Delay"
+df_long$delay[df_long$delay=="delay1.cost"] <- 1
+df_long$delay[df_long$delay=="delay2.cost"] <- 2
+
+g <- ggplot(df_long,aes(x=tFinal,y=c,fill=cost.diff))+geom_tile()+facet_nested(lab2+delay~lab+R0)+theme_bw()+scale_fill_gradient2(midpoint = 0,
+                       low = "#000080", mid = "white", high = "#FF8C00", 
+                       space = "Lab", 
+                       na.value = "grey50", guide = "colourbar",
+                       aesthetics = "fill")
+g
+```
+
+```{r}
+png("Delay costs.png",height=4,width=6,units = "in", res=150)
+g
+dev.off()
+```
+
